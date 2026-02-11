@@ -1,0 +1,82 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-team-invitations-table
+      author: sporttyx
+      changes:
+        - createTable:
+            tableName: team_invitations
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: team_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: participant_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invited_by_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: PENDING
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invited_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: responded_at
+                  type: TIMESTAMP
+        - addForeignKeyConstraint:
+            baseTableName: team_invitations
+            baseColumnNames: team_id
+            constraintName: fk_team_invitations_team
+            referencedTableName: teams
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: team_invitations
+            baseColumnNames: participant_id
+            constraintName: fk_team_invitations_participant
+            referencedTableName: participants
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: team_invitations
+            baseColumnNames: invited_by_id
+            constraintName: fk_team_invitations_invited_by
+            referencedTableName: participants
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_invitations_participant
+            tableName: team_invitations
+            columns:
+              - column:
+                  name: participant_id
+              - column:
+                  name: status
+        - createIndex:
+            indexName: idx_invitations_team
+            tableName: team_invitations
+            columns:
+              - column:
+                  name: team_id
+              - column:
+                  name: status

@@ -1,0 +1,109 @@
+package com.app.controller;
+
+import com.app.dto.*;
+import com.app.model.Team;
+import com.app.security.JwtUtil;
+import com.app.service.ActivityService;
+import com.app.service.TeamService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/teams")
+@CrossOrigin(origins = "http://localhost:3000")
+public class TeamController {
+    
+    @Autowired
+    private TeamService teamService;
+    
+    @Autowired
+    private ActivityService activityService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
+    
+    @GetMapping
+    public ResponseEntity<List<TeamListResponse>> getAllTeams() {
+        List<TeamListResponse> teams = teamService.getAllTeams();
+        return ResponseEntity.ok(teams);
+    }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<TeamDetailResponse> getTeam(@PathVariable Long id) {
+        TeamDetailResponse team = teamService.getTeam(id);
+        return ResponseEntity.ok(team);
+    }
+    
+    @PostMapping
+    public ResponseEntity<Team> createTeam(
+            @RequestBody CreateTeamRequest request,
+            HttpServletRequest httpRequest) {
+        Long userId = extractUserIdFromRequest(httpRequest);
+        Team team = teamService.createTeam(request, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(team);
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<Team> updateTeam(
+            @PathVariable Long id,
+            @RequestBody UpdateTeamRequest request) {
+        try {
+            System.out.println("=== UPDATE TEAM REQUEST ===");
+            System.out.println("Team ID: " + id);
+            System.out.println("Request: " + request);
+            Team team = teamService.updateTeam(id, request);
+            return ResponseEntity.ok(team);
+        } catch (Exception e) {
+            System.err.println("ERROR updating team: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTeam(@PathVariable Long id) {
+        teamService.deleteTeam(id);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+    
+    @PostMapping("/{teamId}/leave")
+    public ResponseEntity<MessageResponse> leaveTeam(
+            @PathVariable Long teamId,
+            HttpServletRequest httpRequest) {
+        Long userId = extractUserIdFromRequest(httpRequest);
+        teamService.leaveTeam(teamId, userId);
+        return ResponseEntity.ok(new MessageResponse("You have left the team"));
+    }
+    
+    @GetMapping("/{id}/participants")
+    public ResponseEntity<List<TeamParticipantDto>> getTeamParticipants(@PathVariable Long id) {
+        List<TeamParticipantDto> participants = teamService.getTeamParticipants(id);
+        return ResponseEntity.ok(participants);
+    }
+    
+    @GetMapping("/rankings")
+    public ResponseEntity<List<TeamRankingResponse>> getTeamRankings() {
+        List<TeamRankingResponse> rankings = teamService.getTeamRankings();
+        return ResponseEntity.ok(rankings);
+    }
+    
+    @GetMapping("/{id}/activity-heatmap")
+    public ResponseEntity<List<ActivityHeatmapResponse>> getTeamActivityHeatmap(@PathVariable Long id) {
+        List<ActivityHeatmapResponse> heatmap = activityService.getTeamActivityHeatmap(id);
+        return ResponseEntity.ok(heatmap);
+    }
+    
+    private Long extractUserIdFromRequest(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtUtil.extractUserId(token);
+        }
+        throw new RuntimeException("No valid token found");
+    }
+}

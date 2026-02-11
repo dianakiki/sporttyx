@@ -1,0 +1,77 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-activities-table
+      author: sporttyx
+      changes:
+        - createTable:
+            tableName: activities
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: team_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: participant_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: energy
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: photo_url
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: activities
+            baseColumnNames: team_id
+            constraintName: fk_activities_team
+            referencedTableName: teams
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: activities
+            baseColumnNames: participant_id
+            constraintName: fk_activities_participant
+            referencedTableName: participants
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_activities_team
+            tableName: activities
+            columns:
+              - column:
+                  name: team_id
+        - createIndex:
+            indexName: idx_activities_participant
+            tableName: activities
+            columns:
+              - column:
+                  name: participant_id
+        - createIndex:
+            indexName: idx_activities_created
+            tableName: activities
+            columns:
+              - column:
+                  name: created_at
+                  descending: true

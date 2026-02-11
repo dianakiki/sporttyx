@@ -1,0 +1,129 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-create-activity-types-table
+      author: sporttyx
+      changes:
+        - createTable:
+            tableName: activity_types
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  type: VARCHAR(255)
+              - column:
+                  name: default_energy
+                  type: INTEGER
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - insert:
+            tableName: activity_types
+            columns:
+              - column:
+                  name: name
+                  value: Бег
+              - column:
+                  name: description
+                  value: Бег на свежем воздухе или на беговой дорожке
+              - column:
+                  name: default_energy
+                  valueNumeric: 100
+        - insert:
+            tableName: activity_types
+            columns:
+              - column:
+                  name: name
+                  value: Велосипед
+              - column:
+                  name: description
+                  value: Велопрогулка или велотренировка
+              - column:
+                  name: default_energy
+                  valueNumeric: 80
+        - insert:
+            tableName: activity_types
+            columns:
+              - column:
+                  name: name
+                  value: Плавание
+              - column:
+                  name: description
+                  value: Плавание в бассейне или открытой воде
+              - column:
+                  name: default_energy
+                  valueNumeric: 120
+        - insert:
+            tableName: activity_types
+            columns:
+              - column:
+                  name: name
+                  value: Тренажерный зал
+              - column:
+                  name: description
+                  value: Силовая тренировка в зале
+              - column:
+                  name: default_energy
+                  valueNumeric: 90
+        - insert:
+            tableName: activity_types
+            columns:
+              - column:
+                  name: name
+                  value: Йога
+              - column:
+                  name: description
+                  value: Практика йоги
+              - column:
+                  name: default_energy
+                  valueNumeric: 50
+        - insert:
+            tableName: activity_types
+            columns:
+              - column:
+                  name: name
+                  value: Футбол
+              - column:
+                  name: description
+                  value: Игра в футбол
+              - column:
+                  name: default_energy
+                  valueNumeric: 110
+        - insert:
+            tableName: activity_types
+            columns:
+              - column:
+                  name: name
+                  value: Баскетбол
+              - column:
+                  name: description
+                  value: Игра в баскетбол
+              - column:
+                  name: default_energy
+                  valueNumeric: 100
+        - insert:
+            tableName: activity_types
+            columns:
+              - column:
+                  name: name
+                  value: Ходьба
+              - column:
+                  name: description
+                  value: Пешая прогулка
+              - column:
+                  name: default_energy
+                  valueNumeric: 40

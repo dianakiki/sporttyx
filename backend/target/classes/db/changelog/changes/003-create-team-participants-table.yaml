@@ -1,0 +1,67 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-team-participants-table
+      author: sporttyx
+      changes:
+        - createTable:
+            tableName: team_participants
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: team_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: participant_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: VARCHAR(20)
+                  defaultValue: PARTICIPANT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: joined_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: team_participants
+            baseColumnNames: team_id
+            constraintName: fk_team_participants_team
+            referencedTableName: teams
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: team_participants
+            baseColumnNames: participant_id
+            constraintName: fk_team_participants_participant
+            referencedTableName: participants
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: team_participants
+            columnNames: team_id, participant_id
+            constraintName: uk_team_participant
+        - createIndex:
+            indexName: idx_team_participants_team
+            tableName: team_participants
+            columns:
+              - column:
+                  name: team_id
+        - createIndex:
+            indexName: idx_team_participants_participant
+            tableName: team_participants
+            columns:
+              - column:
+                  name: participant_id

@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-make-name-nullable
+      author: sporttyx
+      changes:
+        - dropNotNullConstraint:
+            tableName: participants
+            columnName: name
+            columnDataType: VARCHAR(100)

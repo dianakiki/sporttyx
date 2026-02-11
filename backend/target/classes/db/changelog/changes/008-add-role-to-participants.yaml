@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-add-role-to-participants
+      author: diana
+      changes:
+        - addColumn:
+            tableName: participants
+            columns:
+              - column:
+                  name: role
+                  type: varchar(20)
+                  defaultValue: 'USER'
+                  constraints:
+                    nullable: false

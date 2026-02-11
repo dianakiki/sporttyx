@@ -1,0 +1,83 @@
+# Версия синтаксиса Docker Compose
+version: '3.8'
+
+# Определение всех сервисов (контейнеров) приложения
+services:
+  # База данных PostgreSQL
+  postgres:
+    # Используем готовый образ PostgreSQL версии 14 (alpine - облегченная версия)
+    image: postgres:14-alpine
+    # Имя контейнера для удобства
+    container_name: sporttyx-postgres
+    # Переменные окружения для настройки PostgreSQL
+    environment:
+      # Имя базы данных, которая будет создана автоматически
+      POSTGRES_DB: sporttyx_db
+      # Имя пользователя для подключения к БД
+      POSTGRES_USER: postgres
+      # Пароль для пользователя БД
+      POSTGRES_PASSWORD: postgres
+    # Проброс портов: внешний_порт:внутренний_порт
+    # Позволяет подключаться к БД с хоста на localhost:5432
+    ports:
+      - "5432:5432"
+    # Постоянное хранилище данных (volume)
+    # Данные БД сохраняются даже после удаления контейнера
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # Проверка здоровья контейнера
+    # Убеждаемся, что PostgreSQL готов принимать соединения
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s  # Проверять каждые 10 секунд
+      timeout: 5s    # Таймаут проверки 5 секунд
+      retries: 5     # Количество попыток перед признанием контейнера нездоровым
+
+  # Backend приложение (Spring Boot)
+  backend:
+    # Собираем образ из Dockerfile в папке backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    # Имя контейнера
+    container_name: sporttyx-backend
+    # Проброс портов: хост:контейнер
+    # Backend будет доступен на http://localhost:8082
+    ports:
+      - "8082:8080"
+    # Переменные окружения для Spring Boot
+    # Переопределяют настройки из application.properties
+    environment:
+      # URL подключения к БД (postgres - имя сервиса в docker-compose)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/sporttyx_db
+      # Имя пользователя БД
+      SPRING_DATASOURCE_USERNAME: postgres
+      # Пароль БД
+      SPRING_DATASOURCE_PASSWORD: postgres
+    # Зависимости: backend запустится только после того, как postgres будет здоров
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Frontend приложение (React)
+  frontend:
+    # Собираем образ из Dockerfile в папке frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    # Имя контейнера
+    container_name: sporttyx-frontend
+    # Проброс портов: хост:контейнер
+    # Frontend будет доступен на http://localhost:3000
+    ports:
+      - "3000:80"
+    # Frontend зависит от backend
+    # Запустится только после запуска backend
+    depends_on:
+      - backend
+
+# Определение volumes (постоянных хранилищ)
+volumes:
+  # Volume для данных PostgreSQL
+  # Создается автоматически и управляется Docker
+  postgres-data:

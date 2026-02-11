@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-create-participants-table.yaml
+  - include:
+      file: db/changelog/changes/002-create-teams-table.yaml
+  - include:
+      file: db/changelog/changes/003-create-team-participants-table.yaml
+  - include:
+      file: db/changelog/changes/004-create-activities-table.yaml
+  - include:
+      file: db/changelog/changes/005-create-team-invitations-table.yaml
+  - include:
+      file: db/changelog/changes/006-make-name-nullable.yaml
+  - include:
+      file: db/changelog/changes/007-create-activity-types-table.yaml
+  - include:
+      file: db/changelog/changes/008-add-role-to-participants.yaml
+  - include:
+      file: db/changelog/changes/010-refactor-activities-to-use-activity-type-id.yaml
+  - include:
+      file: db/changelog/changes/011-add-message-to-team-invitations.yaml

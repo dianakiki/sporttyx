@@ -1,0 +1,393 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Input } from './ui/Input';
+import { Button } from './ui/Button';
+import { Activity, Upload, Image as ImageIcon } from 'lucide-react';
+
+interface Team {
+    id: number;
+    name: string;
+}
+
+interface Participant {
+    id: number;
+    name: string;
+}
+
+interface ActivityType {
+    id: number;
+    name: string;
+    description?: string;
+    defaultEnergy?: number;
+}
+
+export const AddActivityForm: React.FC = () => {
+    const [teams, setTeams] = useState<Team[]>([]);
+    const [participants, setParticipants] = useState<Participant[]>([]);
+    const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
+    const [selectedTeamId, setSelectedTeamId] = useState('');
+    const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
+    const [selectedActivityTypeId, setSelectedActivityTypeId] = useState('');
+    const [activityTypeSearch, setActivityTypeSearch] = useState('');
+    const [showActivityTypeDropdown, setShowActivityTypeDropdown] = useState(false);
+    const [energy, setEnergy] = useState('');
+    const [photos, setPhotos] = useState<File[]>([]);
+    const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        fetchUserTeamAndActivityTypes();
+    }, []);
+
+    useEffect(() => {
+        if (selectedTeamId) {
+            fetchTeamParticipants(selectedTeamId);
+        } else {
+            setParticipants([]);
+            setSelectedParticipantIds([]);
+        }
+    }, [selectedTeamId]);
+
+    useEffect(() => {
+        if (selectedActivityTypeId) {
+            const activityType = activityTypes.find(at => at.id.toString() === selectedActivityTypeId);
+            if (activityType?.defaultEnergy) {
+                setEnergy(activityType.defaultEnergy.toString());
+            }
+        }
+    }, [selectedActivityTypeId, activityTypes]);
+
+    const fetchUserTeamAndActivityTypes = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const userId = localStorage.getItem('userId');
+            
+            // Fetch user's team
+            const userResponse = await fetch(`/api/participants/${userId}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            
+            if (userResponse.ok) {
+                const userData = await userResponse.json();
+                if (userData.teamId) {
+                    setSelectedTeamId(userData.teamId.toString());
+                }
+            }
+            
+            // Fetch activity types
+            const typesResponse = await fetch('/api/activity-types', {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            
+            if (typesResponse.ok) {
+                const typesData = await typesResponse.json();
+                setActivityTypes(typesData);
+            }
+        } catch (err) {
+            console.error('Error fetching data:', err);
+        }
+    };
+
+    const fetchTeamParticipants = async (teamId: string) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/teams/${teamId}/participants`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setParticipants(data);
+            } else {
+                // Мок-данные для демонстрации
+                const mockParticipants: Participant[] = [
+                    { id: 1, name: 'Иван Иванов' },
+                    { id: 2, name: 'Мария Петрова' },
+                    { id: 3, name: 'Алексей Сидоров' },
+                    { id: 4, name: 'Елена Смирнова' },
+                ];
+                setParticipants(mockParticipants);
+            }
+        } catch (err) {
+            console.error('Error fetching participants:', err);
+            // Мок-данные при ошибке
+            const mockParticipants: Participant[] = [
+                { id: 1, name: 'Иван Иванов' },
+                { id: 2, name: 'Мария Петрова' },
+                { id: 3, name: 'Алексей Сидоров' },
+                { id: 4, name: 'Елена Смирнова' },
+            ];
+            setParticipants(mockParticipants);
+        }
+    };
+
+    const handlePhotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length > 0) {
+            setPhotos([...photos, ...files]);
+            
+            // Create previews for new files
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setPhotoPreviews(prev => [...prev, reader.result as string]);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    };
+
+    const removePhoto = (index: number) => {
+        setPhotos(photos.filter((_, i) => i !== index));
+        setPhotoPreviews(photoPreviews.filter((_, i) => i !== index));
+    };
+
+    const toggleParticipant = (participantId: number) => {
+        setSelectedParticipantIds(prev => 
+            prev.includes(participantId)
+                ? prev.filter(id => id !== participantId)
+                : [...prev, participantId]
+        );
+    };
+
+    const toggleAllParticipants = () => {
+        if (selectedParticipantIds.length === participants.length) {
+            setSelectedParticipantIds([]);
+        } else {
+            setSelectedParticipantIds(participants.map(p => p.id));
+        }
+    };
+
+    const selectActivityType = (activityType: ActivityType) => {
+        setSelectedActivityTypeId(activityType.id.toString());
+        setActivityTypeSearch(activityType.name);
+        setShowActivityTypeDropdown(false);
+    };
+
+    const filteredActivityTypes = activityTypes.filter(at =>
+        at.name.toLowerCase().includes(activityTypeSearch.toLowerCase())
+    );
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        if (!selectedTeamId || selectedParticipantIds.length === 0 || !selectedActivityTypeId || !energy) {
+            setError('Заполните все обязательные поля');
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            const token = localStorage.getItem('token');
+            const activityType = activityTypes.find(at => at.id.toString() === selectedActivityTypeId);
+            
+            // Create activity for each selected participant
+            const promises = selectedParticipantIds.map(participantId => {
+                const formData = new FormData();
+                formData.append('teamId', selectedTeamId);
+                formData.append('participantId', participantId.toString());
+                formData.append('type', activityType?.name || '');
+                formData.append('energy', energy);
+                
+                photos.forEach((photo) => {
+                    formData.append('photos', photo);
+                });
+
+                return fetch('/api/activities', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData,
+                });
+            });
+
+            const responses = await Promise.all(promises);
+            const allSuccess = responses.every(r => r.ok);
+
+            if (allSuccess) {
+                navigate(-1);
+            } else {
+                setError('Ошибка добавления некоторых активностей');
+            }
+        } catch (err) {
+            setError('Ошибка подключения к серверу');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen p-4 md:p-8">
+            <div className="max-w-2xl mx-auto">
+                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                    <div className="text-center mb-8">
+                        <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                            <Activity className="w-8 h-8 text-blue-600" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-slate-800 mb-2">Добавить активность</h1>
+                        <p className="text-slate-500">Зафиксируйте свою спортивную активность</p>
+                    </div>
+
+                    <form onSubmit={handleSubmit}>
+                        {selectedTeamId && participants.length > 0 && (
+                            <div className="mb-6">
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                    Участники
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={toggleAllParticipants}
+                                        className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                                            selectedParticipantIds.length === participants.length
+                                                ? 'bg-blue-600 text-white shadow-md'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                        }`}
+                                    >
+                                        Все
+                                    </button>
+                                    {participants.map((participant) => (
+                                        <button
+                                            key={participant.id}
+                                            type="button"
+                                            onClick={() => toggleParticipant(participant.id)}
+                                            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                                                selectedParticipantIds.includes(participant.id)
+                                                    ? 'bg-blue-600 text-white shadow-md'
+                                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                            }`}
+                                        >
+                                            {participant.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mb-6 relative">
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                Тип активности
+                            </label>
+                            <input
+                                type="text"
+                                value={activityTypeSearch}
+                                onChange={(e) => {
+                                    setActivityTypeSearch(e.target.value);
+                                    setShowActivityTypeDropdown(true);
+                                }}
+                                onFocus={() => setShowActivityTypeDropdown(true)}
+                                placeholder="Начните вводить тип активности..."
+                                className="w-full px-5 py-4 rounded-xl bg-white border-2 border-slate-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 shadow-sm hover:border-slate-300"
+                                required
+                            />
+                            {showActivityTypeDropdown && filteredActivityTypes.length > 0 && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border-2 border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                    {filteredActivityTypes.map((activityType) => (
+                                        <button
+                                            key={activityType.id}
+                                            type="button"
+                                            onClick={() => selectActivityType(activityType)}
+                                            className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-slate-100 last:border-0"
+                                        >
+                                            <div className="font-medium text-slate-900">{activityType.name}</div>
+                                            {activityType.description && (
+                                                <div className="text-sm text-slate-500">{activityType.description}</div>
+                                            )}
+                                            {activityType.defaultEnergy && (
+                                                <div className="text-xs text-blue-600 mt-1">По умолчанию: {activityType.defaultEnergy} баллов</div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {energy && (
+                            <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                                <p className="text-sm font-semibold text-blue-900 mb-1">Энергия за активность</p>
+                                <p className="text-2xl font-bold text-blue-600">{energy} баллов</p>
+                            </div>
+                        )}
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                Фото (необязательно, можно несколько)
+                            </label>
+                            
+                            {/* Photo Previews Grid */}
+                            {photoPreviews.length > 0 && (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                                    {photoPreviews.map((preview, index) => (
+                                        <div key={index} className="relative group">
+                                            <img
+                                                src={preview}
+                                                alt={`Preview ${index + 1}`}
+                                                className="w-full h-40 object-cover rounded-xl border-2 border-slate-200"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removePhoto(index)}
+                                                className="absolute top-2 right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            {/* Upload Button */}
+                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
+                                <label className="cursor-pointer">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        onChange={handlePhotosChange}
+                                        className="hidden"
+                                    />
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <ImageIcon className="w-6 h-6 text-blue-600" />
+                                        </div>
+                                        <p className="text-slate-600 font-medium">
+                                            Нажмите для загрузки фото
+                                        </p>
+                                        <p className="text-sm text-slate-400">
+                                            Можно выбрать несколько. PNG, JPG до 10MB
+                                        </p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => navigate(-1)}
+                            >
+                                Отмена
+                            </Button>
+                            <Button type="submit" isLoading={isLoading}>
+                                <Upload className="w-5 h-5" />
+                                Добавить активность
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+};

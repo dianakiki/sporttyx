@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-refactor-activities-to-use-activity-type-id
+      author: diana
+      changes:
+        # Add new column activity_type_id
+        - addColumn:
+            tableName: activities
+            columns:
+              - column:
+                  name: activity_type_id
+                  type: BIGINT
+        
+        # Migrate existing data: match type string to activity_types.name
+        - sql:
+            sql: |
+              UPDATE activities a
+              SET activity_type_id = at.id
+              FROM activity_types at
+              WHERE a.type = at.name;
+        
+        # Make activity_type_id NOT NULL after data migration
+        - addNotNullConstraint:
+            tableName: activities
+            columnName: activity_type_id
+            columnDataType: BIGINT
+        
+        # Add foreign key constraint
+        - addForeignKeyConstraint:
+            baseTableName: activities
+            baseColumnNames: activity_type_id
+            constraintName: fk_activities_activity_type
+            referencedTableName: activity_types
+            referencedColumnNames: id
+            onDelete: RESTRICT
+        
+        # Drop old type column
+        - dropColumn:
+            tableName: activities
+            columnName: type
+        
+        # Add index for better performance
+        - createIndex:
+            indexName: idx_activities_activity_type
+            tableName: activities
+            columns:
+              - column:
+                  name: activity_type_id

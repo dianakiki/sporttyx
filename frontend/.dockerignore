@@ -1,0 +1,12 @@
+# Не копируем node_modules в Docker (они будут установлены внутри)
+node_modules
+
+# Не копируем результаты предыдущих сборок
+build
+
+# Игнорируем служебные файлы
+.git
+.gitignore
+.DS_Store
+*.iml
+.idea
