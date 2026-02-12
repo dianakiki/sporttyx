@@ -19,6 +19,12 @@ public class ActivityController {
     @Autowired
     private ActivityService activityService;
     
+    @GetMapping("/activities/all")
+    public ResponseEntity<List<ActivityResponse>> getAllActivities() {
+        List<ActivityResponse> activities = activityService.getAllActivities();
+        return ResponseEntity.ok(activities);
+    }
+    
     @GetMapping("/teams/{teamId}/activities")
     public ResponseEntity<List<ActivityResponse>> getTeamActivities(@PathVariable Long teamId) {
         List<ActivityResponse> activities = activityService.getTeamActivities(teamId);

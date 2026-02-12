@@ -46,7 +46,7 @@ public class TeamService {
                 .map(tp -> new TeamParticipantDto(
                         tp.getParticipant().getId(),
                         tp.getParticipant().getName(),
-                        tp.getRole().name()
+                        tp.getRole().getName()
                 ))
                 .collect(Collectors.toList());
         
@@ -141,7 +141,7 @@ public class TeamService {
                 .map(tp -> new TeamParticipantDto(
                         tp.getParticipant().getId(),
                         tp.getParticipant().getName(),
-                        tp.getRole().name()
+                        tp.getRole().getName()
                 ))
                 .collect(Collectors.toList());
     }

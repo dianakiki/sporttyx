@@ -13,6 +13,7 @@ import { EditProfile } from './components/EditProfile';
 import { EditTeam } from './components/EditTeam';
 import { TeamView } from './components/TeamView';
 import { ActivityView } from './components/ActivityView';
+import { ActivityFeed } from './components/ActivityFeed';
 import { AdminPanel } from './components/AdminPanel';
 import { MainLayout } from './layouts/MainLayout';
 
@@ -124,6 +125,16 @@ function App() {
             <PrivateRoute>
               <MainLayout>
                 <TeamTracker />
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/feed"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <ActivityFeed />
               </MainLayout>
             </PrivateRoute>
           }

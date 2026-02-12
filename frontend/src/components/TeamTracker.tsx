@@ -13,7 +13,7 @@ interface TeamRanking {
 export const TeamTracker: React.FC = () => {
     const [teams, setTeams] = useState<TeamRanking[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'ranking' | 'track'>('ranking');
+    const [activeTab, setActiveTab] = useState<'ranking' | 'track' | 'feed'>('ranking');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -116,12 +116,8 @@ export const TeamTracker: React.FC = () => {
     return (
         <div className="min-h-screen p-6 md:p-8">
             <div className="max-w-5xl mx-auto">
-                <div className="text-center mb-10">
-                    <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl mb-6 shadow-xl">
-                        <Trophy className="w-12 h-12 text-white" />
-                    </div>
-                    <h1 className="text-5xl font-bold text-slate-900 mb-4">Трекер команд</h1>
-                    <p className="text-slate-600 text-xl">Сравнительный рейтинг всех команд</p>
+                <div className="text-center mb-8">
+                    <h1 className="text-4xl font-bold text-slate-900 mb-2">Трекер команд</h1>
                 </div>
 
                 {/* Tab Navigation */}
@@ -145,6 +141,12 @@ export const TeamTracker: React.FC = () => {
                         }`}
                     >
                         🏁 Трекер
+                    </button>
+                    <button
+                        onClick={() => navigate('/feed')}
+                        className="flex-1 py-4 px-6 rounded-2xl font-bold text-lg transition-all bg-white text-slate-600 hover:bg-slate-50 shadow-md"
+                    >
+                        📱 Лента активностей
                     </button>
                 </div>
 

@@ -56,6 +56,20 @@ public class ActivityService {
                 .collect(Collectors.toList());
     }
     
+    public List<ActivityResponse> getAllActivities() {
+        return activityRepository.findAll().stream()
+                .sorted(Comparator.comparing(Activity::getCreatedAt).reversed())
+                .map(a -> new ActivityResponse(
+                        a.getId(),
+                        a.getActivityType().getName(),
+                        a.getEnergy(),
+                        a.getParticipant().getName(),
+                        a.getPhotoUrl(),
+                        a.getCreatedAt()
+                ))
+                .collect(Collectors.toList());
+    }
+    
     public CreateActivityResponse createActivity(Long teamId, Long participantId, String type, 
                                                   Integer energy, MultipartFile photo) {
         Team team = teamRepository.findById(teamId)

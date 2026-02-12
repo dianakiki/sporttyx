@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-add-message-to-team-invitations
+      author: sporttyx
+      changes:
+        - addColumn:
+            tableName: team_invitations
+            columns:
+              - column:
+                  name: message
+                  type: TEXT

@@ -264,23 +264,42 @@ export const MyTeam: React.FC = () => {
                             {activities.map((activity) => (
                                 <div
                                     key={activity.id}
-                                    className="bg-white border-2 border-slate-200 rounded-2xl p-6 hover:border-blue-300 hover:shadow-lg transition-all"
+                                    onClick={() => navigate(`/activity/${activity.id}`)}
+                                    className="bg-white rounded-2xl border-2 border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all overflow-hidden cursor-pointer"
                                 >
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div>
-                                            <h3 className="text-lg font-bold text-slate-900">{activity.type}</h3>
-                                            <p className="text-sm text-slate-600">{activity.participantName}</p>
+                                    {/* Activity Photo */}
+                                    {activity.photoUrl ? (
+                                        <div className="w-full h-48 overflow-hidden bg-slate-100">
+                                            <img 
+                                                src={activity.photoUrl} 
+                                                alt={activity.type}
+                                                className="w-full h-full object-cover"
+                                            />
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-2xl font-bold text-blue-600">
-                                                {activity.energy}
+                                    ) : (
+                                        <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-sky-100 flex items-center justify-center">
+                                            <Calendar className="w-16 h-16 text-blue-300" />
+                                        </div>
+                                    )}
+                                    
+                                    {/* Activity Info */}
+                                    <div className="p-5">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div>
+                                                <h3 className="text-lg font-bold text-slate-900">{activity.type}</h3>
+                                                <p className="text-sm text-slate-600">{activity.participantName}</p>
                                             </div>
-                                            <div className="text-xs text-slate-500">баллов</div>
+                                            <div className="text-right">
+                                                <div className="text-2xl font-bold text-blue-600">
+                                                    {activity.energy}
+                                                </div>
+                                                <div className="text-xs text-slate-500">баллов</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                                        <Calendar className="w-4 h-4" />
-                                        {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Дата не указана'}
+                                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                                            <Calendar className="w-4 h-4" />
+                                            {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Дата не указана'}
+                                        </div>
                                     </div>
                                 </div>
                             ))}

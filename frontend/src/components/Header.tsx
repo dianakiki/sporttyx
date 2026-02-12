@@ -90,7 +90,7 @@ export const Header: React.FC = () => {
                             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all">
                                 <Home className="w-6 h-6 text-white" />
                             </div>
-                            <span className="text-xl font-bold hidden sm:block">Sporttyx</span>
+                            <span className="text-xl font-bold hidden sm:block">DiaSporttyx</span>
                         </button>
 
                         <button

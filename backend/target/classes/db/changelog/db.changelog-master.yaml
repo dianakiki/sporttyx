@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/changes/008-add-role-to-participants.yaml
   - include:
       file: db/changelog/changes/010-refactor-activities-to-use-activity-type-id.yaml
+  - include:
+      file: db/changelog/changes/011-add-message-to-team-invitations.yaml

@@ -53,3 +53,4 @@
 /Users/diana/Desktop/w/sporttyx/backend/src/main/java/com/app/service/ActivityTypeService.java
 /Users/diana/Desktop/w/sporttyx/backend/src/main/java/com/app/service/CustomUserDetailsService.java
 /Users/diana/Desktop/w/sporttyx/backend/src/main/java/com/app/dto/CreateActivityTypeRequest.java
+/Users/diana/Desktop/w/sporttyx/backend/src/main/java/com/app/config/DefaultAdminInitializer.java

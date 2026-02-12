@@ -1,5 +1,6 @@
 com/app/service/ActivityService.class
 com/app/SporttyxApplication.class
+com/app/config/DefaultAdminInitializer.class
 com/app/dto/CreateParticipantRequest.class
 com/app/dto/ParticipantSearchResponse.class
 com/app/controller/ActivityController.class
