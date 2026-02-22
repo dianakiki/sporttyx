@@ -17,6 +17,7 @@ interface Activity {
     createdAt: string;
     participantName: string;
     photoUrl?: string;
+    photoUrls?: string[];
 }
 
 interface Team {
@@ -125,7 +126,11 @@ export const MyTeam: React.FC = () => {
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
                     <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                    <p className="text-xl text-slate-600">Команда не найдена</p>
+                    <p className="text-xl text-slate-600 mb-6">У вас пока нет команды</p>
+                    <Button onClick={() => navigate('/create-team')}>
+                        <Plus className="w-5 h-5" />
+                        Создать команду
+                    </Button>
                 </div>
             </div>
         );
@@ -268,10 +273,10 @@ export const MyTeam: React.FC = () => {
                                     className="bg-white rounded-2xl border-2 border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all overflow-hidden cursor-pointer"
                                 >
                                     {/* Activity Photo */}
-                                    {activity.photoUrl ? (
+                                    {(activity.photoUrls && activity.photoUrls.length > 0) || activity.photoUrl ? (
                                         <div className="w-full h-48 overflow-hidden bg-slate-100">
                                             <img 
-                                                src={activity.photoUrl} 
+                                                src={(activity.photoUrls && activity.photoUrls.length > 0) ? activity.photoUrls[0] : activity.photoUrl} 
                                                 alt={activity.type}
                                                 className="w-full h-full object-cover"
                                             />

@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-add-activity-moderation
+      author: system
+      changes:
+        - sql:
+            sql: CREATE TYPE activity_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'AUTO_APPROVED')
+        - addColumn:
+            tableName: activities
+            columns:
+              - column:
+                  name: status
+                  type: activity_status
+                  defaultValue: AUTO_APPROVED
+                  constraints:
+                    nullable: false
+              - column:
+                  name: moderated_by
+                  type: BIGINT
+                  constraints:
+                    foreignKeyName: fk_activities_moderated_by
+                    references: participants(id)
+              - column:
+                  name: moderated_at
+                  type: TIMESTAMP
+              - column:
+                  name: rejection_reason
+                  type: TEXT
+        - createIndex:
+            indexName: idx_activities_status
+            tableName: activities
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            indexName: idx_activities_moderated_by
+            tableName: activities
+            columns:
+              - column:
+                  name: moderated_by

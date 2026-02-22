@@ -17,4 +17,5 @@ public class ParticipantResponse {
     private String role;
     private Long teamId;
     private String teamName;
+    private Long eventId;
 }

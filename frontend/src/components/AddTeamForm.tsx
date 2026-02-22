@@ -157,7 +157,7 @@ export const AddTeamForm: React.FC = () => {
 
                 if (!response.ok) {
                     const data = await response.json();
-                    setError(data.message || `Ошибка приглашения ${participant.name}`);
+                    setError(data.message || `Ошибка добавления ${participant.name}`);
                     setIsLoading(false);
                     return;
                 }
@@ -179,8 +179,8 @@ export const AddTeamForm: React.FC = () => {
                         <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
                             <UserPlus className="w-8 h-8 text-blue-600" />
                         </div>
-                        <h1 className="text-3xl font-bold text-slate-800 mb-2">Пригласить в команду</h1>
-                        <p className="text-slate-500">Найдите и пригласите участников</p>
+                        <h1 className="text-3xl font-bold text-slate-800 mb-2">Добавить участников</h1>
+                        <p className="text-slate-500">Найдите и добавьте участников в команду</p>
                     </div>
 
                     <form onSubmit={handleSubmit}>
@@ -200,7 +200,7 @@ export const AddTeamForm: React.FC = () => {
                             <textarea
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
-                                placeholder="Напишите сообщение для приглашаемых участников..."
+                                placeholder="Напишите сообщение для добавляемых участников..."
                                 rows={3}
                                 className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none"
                             />
@@ -226,10 +226,12 @@ export const AddTeamForm: React.FC = () => {
                                                     key={participant.id}
                                                     type="button"
                                                     onClick={() => addParticipant(participant)}
-                                                    className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex items-center gap-2"
+                                                    className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 border-b border-slate-100 last:border-0"
                                                 >
-                                                    <UserPlus className="w-4 h-4 text-blue-600" />
-                                                    {participant.name}
+                                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                                                        {participant.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <span className="font-medium text-slate-800">{participant.name}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -248,17 +250,22 @@ export const AddTeamForm: React.FC = () => {
                                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                                     Выбранные участники ({selectedParticipants.length})
                                 </label>
-                                <div className="space-y-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {selectedParticipants.map((participant) => (
                                         <div
                                             key={participant.id}
-                                            className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-lg"
+                                            className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-100 rounded-xl group hover:shadow-md transition-all"
                                         >
-                                            <span className="text-slate-800 font-medium">{participant.name}</span>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                                    {participant.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <span className="text-slate-800 font-medium">{participant.name}</span>
+                                            </div>
                                             <button
                                                 type="button"
                                                 onClick={() => removeParticipant(participant.id)}
-                                                className="text-red-500 hover:text-red-700 transition-colors"
+                                                className="text-red-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
                                             >
                                                 <X className="w-5 h-5" />
                                             </button>
@@ -283,7 +290,7 @@ export const AddTeamForm: React.FC = () => {
                                 Отмена
                             </Button>
                             <Button type="submit" isLoading={isLoading}>
-                                Отправить приглашения
+                                Добавить участников
                             </Button>
                         </div>
                     </form>

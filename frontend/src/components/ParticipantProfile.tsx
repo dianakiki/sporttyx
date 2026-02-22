@@ -39,35 +39,9 @@ export const ParticipantProfile: React.FC = () => {
                 const data = await response.json();
                 setParticipant(data);
                 setProfileImage(data.profileImageUrl || '');
-            } else {
-                // Временные данные для демонстрации
-                const mockData = {
-                    id: 1,
-                    username: 'ivan',
-                    name: 'Иван Иванов',
-                    teamName: 'Команда Чемпионов',
-                    email: 'ivan@example.com',
-                    phone: '+7 (999) 123-45-67',
-                    profileImageUrl: ''
-                };
-                setParticipant(mockData);
-                setProfileImage(mockData.profileImageUrl || '');
-                console.log('API error, using mock data for dev');
             }
         } catch (err) {
             console.error('Error fetching profile:', err);
-            // Временные данные при ошибке
-            const mockData = {
-                id: 1,
-                username: 'ivan',
-                name: 'Иван Иванов',
-                teamName: 'Команда Чемпионов',
-                email: 'ivan@example.com',
-                phone: '+7 (999) 123-45-67',
-                profileImageUrl: ''
-            };
-            setParticipant(mockData);
-            setProfileImage(mockData.profileImageUrl || '');
         } finally {
             setIsLoading(false);
         }

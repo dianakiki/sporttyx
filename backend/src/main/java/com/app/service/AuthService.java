@@ -50,7 +50,7 @@ public class AuthService {
         
         String token = jwtUtil.generateToken(participant.getUsername(), participant.getId());
         
-        return new AuthResponse(token, participant.getId(), participant.getUsername(), participant.getName(), participant.getRole().name());
+        return new AuthResponse(token, participant.getId(), participant.getUsername(), participant.getName(), participant.getRole().name(), false);
     }
     
     public AuthResponse login(LoginRequest request) {
@@ -63,6 +63,6 @@ public class AuthService {
         
         String token = jwtUtil.generateToken(participant.getUsername(), participant.getId());
         
-        return new AuthResponse(token, participant.getId(), participant.getUsername(), participant.getName(), participant.getRole().name());
+        return new AuthResponse(token, participant.getId(), participant.getUsername(), participant.getName(), participant.getRole().name(), participant.getPasswordResetRequired());
     }
 }

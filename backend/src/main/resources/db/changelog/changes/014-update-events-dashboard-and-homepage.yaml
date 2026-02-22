@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-update-events-dashboard-and-homepage
+      author: sporttyx
+      changes:
+        - renameColumn:
+            tableName: events
+            oldColumnName: pinned_on_homepage
+            newColumnName: display_on_homepage
+            columnDataType: BOOLEAN
+        - renameColumn:
+            tableName: events
+            oldColumnName: dashboard_type
+            newColumnName: dashboard_types
+            columnDataType: VARCHAR(500)

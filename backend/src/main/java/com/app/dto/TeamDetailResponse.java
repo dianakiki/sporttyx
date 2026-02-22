@@ -17,4 +17,5 @@ public class TeamDetailResponse {
     private Integer totalPoints;
     private Integer rank;
     private List<TeamParticipantDto> participants;
+    private Long eventId;
 }

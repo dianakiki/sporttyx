@@ -7,9 +7,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 @Service
@@ -57,6 +61,8 @@ public class TeamService {
         
         Integer rank = calculateRank(id, totalPoints);
         
+        Long eventId = team.getEvent() != null ? team.getEvent().getId() : null;
+        
         return new TeamDetailResponse(
                 team.getId(),
                 team.getName(),
@@ -64,7 +70,8 @@ public class TeamService {
                 team.getImageUrl(),
                 totalPoints,
                 rank,
-                participants
+                participants,
+                eventId
         );
     }
     
@@ -132,6 +139,14 @@ public class TeamService {
     }
     
     @Transactional
+    public void updateTeamImage(Long id, String imageUrl) {
+        Team team = teamRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Team not found"));
+        team.setImageUrl(imageUrl);
+        teamRepository.save(team);
+    }
+    
+    @Transactional
     public void leaveTeam(Long teamId, Long participantId) {
         teamParticipantRepository.deleteByTeamIdAndParticipantId(teamId, participantId);
     }
@@ -193,5 +208,77 @@ public class TeamService {
         }
         
         return rank;
+    }
+    
+    public List<TeamRegularityResponse> getTeamRegularityStats() {
+        List<Team> teams = teamRepository.findAll();
+        List<TeamRegularityResponse> regularityStats = new ArrayList<>();
+        
+        for (Team team : teams) {
+            Integer totalPoints = teamParticipantRepository.getTotalPointsByTeamId(team.getId());
+            if (totalPoints == null) {
+                totalPoints = 0;
+            }
+            
+            int participantCount = teamParticipantRepository.findByTeamId(team.getId()).size();
+            
+            // Получаем все активности команды
+            List<Activity> activities = activityRepository.findByTeamIdOrderByCreatedAtDesc(team.getId());
+            
+            // Собираем уникальные даты активностей
+            Set<LocalDate> activityDates = new HashSet<>();
+            for (Activity activity : activities) {
+                activityDates.add(activity.getCreatedAt().toLocalDate());
+            }
+            
+            // Подсчитываем текущую серию (streak)
+            int currentStreak = 0;
+            LocalDate today = LocalDate.now();
+            LocalDate checkDate = today;
+            
+            while (activityDates.contains(checkDate)) {
+                currentStreak++;
+                checkDate = checkDate.minusDays(1);
+            }
+            
+            // Если сегодня нет активности, проверяем вчера
+            if (currentStreak == 0 && activityDates.contains(today.minusDays(1))) {
+                checkDate = today.minusDays(1);
+                while (activityDates.contains(checkDate)) {
+                    currentStreak++;
+                    checkDate = checkDate.minusDays(1);
+                }
+            }
+            
+            // Подсчитываем активные дни
+            int activeDays = activityDates.size();
+            
+            // Формируем календарь последних 14 дней
+            List<Boolean> last14Days = new ArrayList<>();
+            for (int i = 13; i >= 0; i--) {
+                LocalDate date = today.minusDays(i);
+                last14Days.add(activityDates.contains(date));
+            }
+            
+            regularityStats.add(new TeamRegularityResponse(
+                    team.getId(),
+                    team.getName(),
+                    totalPoints,
+                    participantCount,
+                    0, // rank будет установлен позже
+                    currentStreak,
+                    activeDays,
+                    last14Days
+            ));
+        }
+        
+        // Сортируем по баллам и устанавливаем ранги
+        regularityStats.sort(Comparator.comparing(TeamRegularityResponse::getTotalPoints).reversed());
+        
+        for (int i = 0; i < regularityStats.size(); i++) {
+            regularityStats.get(i).setRank(i + 1);
+        }
+        
+        return regularityStats;
     }
 }

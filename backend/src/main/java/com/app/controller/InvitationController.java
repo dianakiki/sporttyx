@@ -27,6 +27,9 @@ public class InvitationController {
     @Autowired
     private JwtUtil jwtUtil;
     
+    /**
+     * Получить все приглашения участника
+     */
     @GetMapping("/participants/{participantId}/invitations")
     public ResponseEntity<List<InvitationResponse>> getParticipantInvitations(
             @PathVariable Long participantId) {
@@ -34,17 +37,29 @@ public class InvitationController {
         return ResponseEntity.ok(invitations);
     }
     
+    /**
+     * Создать приглашение в команду для участника
+     */
     @PostMapping("/teams/{teamId}/invite")
-    public ResponseEntity<TeamInvitation> createInvitation(
+    public ResponseEntity<?> createInvitation(
             @PathVariable Long teamId,
             @RequestBody InviteParticipantRequest request,
             HttpServletRequest httpRequest) {
-        Long invitedById = extractUserIdFromRequest(httpRequest);
-        TeamInvitation invitation = invitationService.createInvitation(
-                teamId, request.getParticipantId(), invitedById, request.getMessage());
-        return ResponseEntity.status(HttpStatus.CREATED).body(invitation);
+        try {
+            Long invitedById = extractUserIdFromRequest(httpRequest);
+            TeamInvitation invitation = invitationService.createInvitation(
+                    teamId, request.getParticipantId(), invitedById, request.getMessage());
+            return ResponseEntity.status(HttpStatus.CREATED).body(invitation);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
     }
     
+    /**
+     * Принять приглашение в команду
+     */
     @PostMapping("/invitations/{invitationId}/accept")
     public ResponseEntity<Map<String, Object>> acceptInvitation(
             @PathVariable Long invitationId,
@@ -57,6 +72,9 @@ public class InvitationController {
         return ResponseEntity.ok(response);
     }
     
+    /**
+     * Отклонить приглашение в команду
+     */
     @PostMapping("/invitations/{invitationId}/decline")
     public ResponseEntity<MessageResponse> declineInvitation(
             @PathVariable Long invitationId,

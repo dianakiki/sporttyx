@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, TrendingUp, Users, Medal, ArrowLeft } from 'lucide-react';
+import { Trophy, TrendingUp, Users, Medal, ArrowLeft, Activity, Calendar, List, User } from 'lucide-react';
+import { translateDashboardType } from '../utils/translations';
 
 interface TeamRanking {
     id: number;
@@ -8,58 +9,79 @@ interface TeamRanking {
     totalPoints: number;
     participantCount: number;
     rank: number;
+    currentStreak?: number;
+    activeDays?: number;
+    last14Days?: boolean[];
 }
 
-export const TeamTracker: React.FC = () => {
+interface ParticipantRanking {
+    id: number;
+    name: string;
+    username: string;
+    totalPoints: number;
+    rank: number;
+    profileImageUrl?: string;
+}
+
+interface TeamTrackerProps {
+    dashboardTypes?: string[];
+    activeDashboard?: string;
+    setActiveDashboard?: (dashboard: string) => void;
+    eventId?: number;
+    teamBasedCompetition?: boolean;
+}
+
+export const TeamTracker: React.FC<TeamTrackerProps> = ({ 
+    dashboardTypes = [], 
+    activeDashboard = 'RANKING',
+    setActiveDashboard,
+    eventId,
+    teamBasedCompetition = true
+}) => {
     const [teams, setTeams] = useState<TeamRanking[]>([]);
+    const [participants, setParticipants] = useState<ParticipantRanking[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'ranking' | 'track' | 'feed'>('ranking');
     const navigate = useNavigate();
 
     useEffect(() => {
         fetchTeamRankings();
-    }, []);
+    }, [eventId, teamBasedCompetition, activeDashboard]);
 
     const fetchTeamRankings = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('/api/teams/rankings', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
+            
+            if (!teamBasedCompetition && eventId) {
+                // Загружаем индивидуальный рейтинг
+                const response = await fetch(`/api/participants/rankings?eventId=${eventId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
 
-            if (response.ok) {
-                const data = await response.json();
-                setTeams(data);
+                if (response.ok) {
+                    const data = await response.json();
+                    setParticipants(data);
+                }
             } else {
-                // Мок-данные для демонстрации
-                const mockData: TeamRanking[] = [
-                    { id: 1, name: 'Команда Чемпионов', totalPoints: 2450, participantCount: 5, rank: 1 },
-                    { id: 2, name: 'Спортивные Львы', totalPoints: 2180, participantCount: 6, rank: 2 },
-                    { id: 3, name: 'Энергия Победы', totalPoints: 1950, participantCount: 4, rank: 3 },
-                    { id: 4, name: 'Быстрые Гепарды', totalPoints: 1720, participantCount: 5, rank: 4 },
-                    { id: 5, name: 'Стальные Титаны', totalPoints: 1580, participantCount: 7, rank: 5 },
-                    { id: 6, name: 'Огненные Драконы', totalPoints: 1340, participantCount: 4, rank: 6 },
-                    { id: 7, name: 'Морские Волки', totalPoints: 1120, participantCount: 5, rank: 7 },
-                    { id: 8, name: 'Горные Орлы', totalPoints: 980, participantCount: 3, rank: 8 },
-                ];
-                setTeams(mockData);
+                // Для трекера загружаем статистику регулярности, для остальных - обычный рейтинг
+                const endpoint = activeDashboard === 'TRACKER' 
+                    ? '/api/teams/regularity-stats' 
+                    : '/api/teams/rankings';
+                    
+                const response = await fetch(endpoint, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setTeams(data);
+                }
             }
         } catch (err) {
-            console.error('Error fetching team rankings:', err);
-            // Мок-данные при ошибке
-            const mockData: TeamRanking[] = [
-                { id: 1, name: 'Команда Чемпионов', totalPoints: 2450, participantCount: 5, rank: 1 },
-                { id: 2, name: 'Спортивные Львы', totalPoints: 2180, participantCount: 6, rank: 2 },
-                { id: 3, name: 'Энергия Победы', totalPoints: 1950, participantCount: 4, rank: 3 },
-                { id: 4, name: 'Быстрые Гепарды', totalPoints: 1720, participantCount: 5, rank: 4 },
-                { id: 5, name: 'Стальные Титаны', totalPoints: 1580, participantCount: 7, rank: 5 },
-                { id: 6, name: 'Огненные Драконы', totalPoints: 1340, participantCount: 4, rank: 6 },
-                { id: 7, name: 'Морские Волки', totalPoints: 1120, participantCount: 5, rank: 7 },
-                { id: 8, name: 'Горные Орлы', totalPoints: 980, participantCount: 3, rank: 8 },
-            ];
-            setTeams(mockData);
+            console.error('Error fetching rankings:', err);
         } finally {
             setIsLoading(false);
         }
@@ -113,48 +135,196 @@ export const TeamTracker: React.FC = () => {
         );
     }
 
+    const getDashboardIcon = (type: string) => {
+        switch (type) {
+            case 'RANKING':
+                return <Trophy className="w-5 h-5" />;
+            case 'TRACKER':
+                return <Activity className="w-5 h-5" />;
+            case 'FEED':
+                return <Calendar className="w-5 h-5" />;
+            case 'SIMPLE_LIST':
+                return <List className="w-5 h-5" />;
+            default:
+                return <Trophy className="w-5 h-5" />;
+        }
+    };
+
     return (
         <div className="min-h-screen p-6 md:p-8">
             <div className="max-w-5xl mx-auto">
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-slate-900 mb-2">Трекер команд</h1>
+                    <h1 className="text-4xl font-bold text-slate-900 mb-2">
+                        {teamBasedCompetition ? 'Трекер команд' : 'Рейтинг участников'}
+                    </h1>
                 </div>
 
-                {/* Tab Navigation */}
-                <div className="flex gap-4 mb-8">
-                    <button
-                        onClick={() => setActiveTab('ranking')}
-                        className={`flex-1 py-4 px-6 rounded-2xl font-bold text-lg transition-all ${
-                            activeTab === 'ranking'
-                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
-                                : 'bg-white text-slate-600 hover:bg-slate-50 shadow-md'
-                        }`}
-                    >
-                        📊 Рейтинг
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('track')}
-                        className={`flex-1 py-4 px-6 rounded-2xl font-bold text-lg transition-all ${
-                            activeTab === 'track'
-                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
-                                : 'bg-white text-slate-600 hover:bg-slate-50 shadow-md'
-                        }`}
-                    >
-                        🏁 Трекер
-                    </button>
-                    <button
-                        onClick={() => navigate('/feed')}
-                        className="flex-1 py-4 px-6 rounded-2xl font-bold text-lg transition-all bg-white text-slate-600 hover:bg-slate-50 shadow-md"
-                    >
-                        📱 Лента активностей
-                    </button>
-                </div>
+                {/* Dashboard Tabs - только если есть dashboardTypes */}
+                {dashboardTypes.length > 0 && setActiveDashboard && (
+                    <div className="flex gap-4 mb-8 justify-center">
+                        {dashboardTypes.map((type) => (
+                            <button
+                                key={type}
+                                onClick={() => setActiveDashboard(type)}
+                                className={`flex items-center gap-2 py-4 px-6 rounded-2xl font-bold text-lg transition-all ${
+                                    activeDashboard === type
+                                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
+                                        : 'bg-white text-slate-600 hover:bg-slate-50 shadow-md'
+                                }`}
+                            >
+                                {getDashboardIcon(type)}
+                                {translateDashboardType(type)}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-10 mb-8">
 
-                    {teams.length > 0 ? (
+                    {!teamBasedCompetition && participants.length > 0 ? (
+                        /* Individual Rankings */
+                        <div className="space-y-5">
+                            {participants.map((participant) => (
+                                <div
+                                    key={participant.id}
+                                    onClick={() => navigate(`/participant/${participant.id}`)}
+                                    className={`relative bg-gradient-to-r ${getRankColor(participant.rank)} border-2 rounded-2xl p-6 cursor-pointer hover:shadow-xl transition-all transform hover:-translate-y-2 hover:scale-[1.02]`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex-shrink-0 w-16 text-center">
+                                            {participant.rank <= 3 ? (
+                                                getMedalIcon(participant.rank)
+                                            ) : (
+                                                <div className="text-3xl font-bold text-slate-400">
+                                                    {participant.rank}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-xl font-bold text-slate-800 mb-1 truncate">
+                                                {participant.name}
+                                            </h3>
+                                            <div className="flex items-center gap-2 text-slate-600">
+                                                <User className="w-4 h-4" />
+                                                <span className="text-sm">@{participant.username}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex-shrink-0 text-right">
+                                            <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm">
+                                                <TrendingUp className="w-5 h-5 text-blue-600" />
+                                                <div>
+                                                    <p className="text-sm text-slate-600 font-medium">Баллы</p>
+                                                    <p className="text-2xl font-bold text-blue-600">
+                                                        {participant.totalPoints}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {participant.rank === 1 && (
+                                        <div className="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                                            Лидер
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : teams.length > 0 ? (
                         <>
-                        {activeTab === 'ranking' ? (
+                        {activeDashboard === 'TRACKER' ? (
+                        /* Regularity View - Рейтинг регулярности */
+                        <div className="space-y-6">
+                            {teams.map((team) => {
+                                const streak = team.currentStreak || 0;
+                                const activeDays = team.activeDays || 0;
+                                const last14Days = team.last14Days || Array(14).fill(false);
+                                const avgPointsPerDay = activeDays > 0 ? Math.round(team.totalPoints / activeDays) : 0;
+                                
+                                return (
+                                    <div key={team.id} className="bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200 rounded-2xl p-6 hover:shadow-xl transition-all">
+                                        {/* Header */}
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-12 h-12 rounded-full ${getTeamColor(team.rank)} flex items-center justify-center text-white font-bold text-lg shadow-lg`}>
+                                                    {team.rank === 1 ? '👑' : team.name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-slate-900 text-lg">{team.name}</h3>
+                                                    <p className="text-sm text-slate-500">{team.participantCount} участников</p>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Streak Badge */}
+                                            <div className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-full shadow-lg">
+                                                <span className="text-2xl">🔥</span>
+                                                <div className="text-right">
+                                                    <p className="text-xs font-semibold opacity-90">Серия</p>
+                                                    <p className="text-xl font-bold">{streak} дн</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Stats */}
+                                        <div className="grid grid-cols-3 gap-3 mb-4">
+                                            <div className="bg-white rounded-xl p-3 text-center border border-slate-200">
+                                                <p className="text-2xl font-bold text-blue-600">{activeDays}</p>
+                                                <p className="text-xs text-slate-600 font-semibold">Активных дней</p>
+                                            </div>
+                                            <div className="bg-white rounded-xl p-3 text-center border border-slate-200">
+                                                <p className="text-2xl font-bold text-green-600">{team.totalPoints}</p>
+                                                <p className="text-xs text-slate-600 font-semibold">Всего баллов</p>
+                                            </div>
+                                            <div className="bg-white rounded-xl p-3 text-center border border-slate-200">
+                                                <p className="text-2xl font-bold text-purple-600">{avgPointsPerDay}</p>
+                                                <p className="text-xs text-slate-600 font-semibold">Баллов/день</p>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Activity Calendar - Last 14 days */}
+                                        <div>
+                                            <p className="text-xs text-slate-600 font-semibold mb-2">Последние 14 дней</p>
+                                            <div className="flex gap-1.5">
+                                                {last14Days.map((hasActivity, index) => {
+                                                    const isToday = index === last14Days.length - 1;
+                                                    return (
+                                                        <div
+                                                            key={index}
+                                                            className={`flex-1 h-12 rounded-lg transition-all ${
+                                                                hasActivity
+                                                                    ? 'bg-gradient-to-br from-green-400 to-green-500 shadow-md hover:scale-110'
+                                                                    : 'bg-slate-100 hover:bg-slate-200'
+                                                            } ${isToday ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+                                                            title={`День ${index + 1}${isToday ? ' (Сегодня)' : ''}`}
+                                                        >
+                                                            {hasActivity && (
+                                                                <div className="w-full h-full flex items-center justify-center text-white font-bold text-xs">
+                                                                    ✓
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Motivation Message */}
+                                        {streak >= 7 && (
+                                            <div className="mt-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-3 flex items-center gap-2">
+                                                <span className="text-2xl">⭐</span>
+                                                <p className="text-sm font-semibold text-orange-800">
+                                                    Отличная серия! Продолжайте в том же духе!
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        ) : (
+                        /* Regular Ranking View */
                         <div className="space-y-5">
                             {teams.map((team, index) => (
                                 <div
@@ -205,59 +375,6 @@ export const TeamTracker: React.FC = () => {
                                     )}
                                 </div>
                             ))}
-                        </div>
-                        ) : (
-                        /* Track View */
-                        <div className="space-y-6">
-                            {teams.map((team) => {
-                                const position = getTrackPosition(team.totalPoints);
-                                return (
-                                    <div key={team.id} className="relative">
-                                        {/* Team Name */}
-                                        <div className="flex items-center justify-between mb-2">
-                                            <h3 className="font-bold text-slate-900 text-lg truncate">
-                                                {team.name}
-                                            </h3>
-                                            <span className="text-sm text-slate-600 font-semibold">
-                                                {team.totalPoints} баллов
-                                            </span>
-                                        </div>
-                                        
-                                        {/* Track */}
-                                        <div className="relative h-8 bg-gradient-to-r from-slate-100 via-slate-50 to-slate-100 rounded-full border-2 border-slate-200 overflow-visible">
-                                            {/* Progress Fill */}
-                                            <div 
-                                                className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-100 to-blue-50 transition-all duration-1000 rounded-full"
-                                                style={{ width: `${position}%` }}
-                                            />
-                                            
-                                            {/* Team Icon - Map Pin Style */}
-                                            <div 
-                                                className="absolute transition-all duration-1000"
-                                                style={{ left: `${position}%`, top: '-56px', transform: `translateX(-50%)` }}
-                                            >
-                                                <div className="flex flex-col items-center">
-                                                    {/* Pin Circle */}
-                                                    <div className={`relative w-16 h-16 rounded-full ${getTeamColor(team.rank)} flex items-center justify-center text-white font-bold text-xl shadow-xl`}>
-                                                        {team.rank === 1 ? (
-                                                            <div className="text-3xl">👑</div>
-                                                        ) : (
-                                                            team.name.charAt(0)
-                                                        )}
-                                                    </div>
-                                                    {/* Pin Tip - connected seamlessly */}
-                                                    <div className={`w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent -mt-1 ${team.rank === 1 ? 'border-t-[16px] border-t-yellow-500' : team.rank === 2 ? 'border-t-[16px] border-t-slate-400' : team.rank === 3 ? 'border-t-[16px] border-t-amber-600' : 'border-t-[16px] border-t-blue-500'}`}></div>
-                                                </div>
-                                            </div>
-                                            
-                                            {/* Start Flag */}
-                                            <div className="absolute left-2 top-1/2 -translate-y-1/2 text-xl">
-                                                🏁
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
                         </div>
                         )}
                         </>

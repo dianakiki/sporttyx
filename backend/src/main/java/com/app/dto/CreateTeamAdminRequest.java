@@ -7,4 +7,5 @@ public class CreateTeamAdminRequest {
     private String name;
     private String motto;
     private String imageUrl;
+    private Long eventId;
 }

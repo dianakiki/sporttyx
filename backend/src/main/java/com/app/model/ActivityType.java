@@ -1,15 +1,17 @@
 package com.app.model;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "activity_types")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class ActivityType {
@@ -26,6 +28,15 @@ public class ActivityType {
     @Column(name = "default_energy")
     private Integer defaultEnergy;
     
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "event_id")
+    private Event event;
+    
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }

@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: 022-add-moderator-role
+      author: system
+      changes:
+        - sql:
+            sql: -- Role is stored as VARCHAR, no enum type to alter

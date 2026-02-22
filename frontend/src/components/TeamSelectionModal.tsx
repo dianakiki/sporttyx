@@ -14,7 +14,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({ isOpen, 
 
     const handleCreateTeam = () => {
         onClose();
-        navigate('/add-team');
+        navigate('/create-team');
     };
 
     const handleJoinTeam = () => {

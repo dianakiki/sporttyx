@@ -11,4 +11,5 @@ public class CreateActivityTypeRequest {
     private String name;
     private String description;
     private Integer defaultEnergy;
+    private Long eventId;
 }

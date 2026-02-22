@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-add-event-id-to-teams-and-activities
+      author: sporttyx
+      changes:
+        - addColumn:
+            tableName: teams
+            columns:
+              - column:
+                  name: event_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: teams
+            baseColumnNames: event_id
+            referencedTableName: events
+            referencedColumnNames: id
+            constraintName: fk_teams_event
+            onDelete: CASCADE
+        - addColumn:
+            tableName: activity_types
+            columns:
+              - column:
+                  name: event_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: activity_types
+            baseColumnNames: event_id
+            referencedTableName: events
+            referencedColumnNames: id
+            constraintName: fk_activity_types_event
+            onDelete: SET NULL

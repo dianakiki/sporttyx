@@ -2,13 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
-import { LogIn } from 'lucide-react';
+import { LogIn, Key } from 'lucide-react';
+import axiosInstance from '../api/axiosConfig';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 export const LoginForm: React.FC = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showResetButton, setShowResetButton] = useState(false);
+    const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+    const [tempUserData, setTempUserData] = useState<any>(null);
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -27,22 +32,71 @@ export const LoginForm: React.FC = () => {
 
             if (response.ok) {
                 const data = await response.json();
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('userId', data.userId);
-                localStorage.setItem('user', JSON.stringify({
-                    userId: data.userId,
-                    username: data.username,
-                    name: data.name,
-                    role: data.role
-                }));
-                navigate('/');
+                
+                // Проверяем, нужна ли смена пароля
+                if (data.passwordResetRequired) {
+                    setTempUserData(data);
+                    setShowChangePasswordModal(true);
+                } else {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userId', data.userId);
+                    localStorage.setItem('user', JSON.stringify({
+                        userId: data.userId,
+                        username: data.username,
+                        name: data.name,
+                        role: data.role
+                    }));
+                    navigate('/');
+                }
             } else {
                 setError('Неверный логин или пароль');
+                setShowResetButton(true);
             }
         } catch (err) {
             setError('Ошибка подключения к серверу');
+            setShowResetButton(false);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!username) {
+            setError('Введите логин для сброса пароля');
+            return;
+        }
+
+        try {
+            // Сначала нужно получить ID пользователя по username
+            const participantsResponse = await axiosInstance.get('/admin/participants');
+            const participant = participantsResponse.data.find((p: any) => p.username === username);
+            
+            if (!participant) {
+                setError('Пользователь не найден');
+                return;
+            }
+
+            await axiosInstance.post(`/admin/participants/${participant.id}/reset-password`);
+            setError('');
+            setShowResetButton(false);
+            alert('Пароль сброшен! Теперь вы можете войти используя ваш логин в качестве пароля. При входе система попросит установить новый пароль.');
+        } catch (err) {
+            setError('Ошибка при сбросе пароля');
+        }
+    };
+
+    const handlePasswordChangeSuccess = () => {
+        // После успешной смены пароля сохраняем данные и переходим на главную
+        if (tempUserData) {
+            localStorage.setItem('token', tempUserData.token);
+            localStorage.setItem('userId', tempUserData.userId);
+            localStorage.setItem('user', JSON.stringify({
+                userId: tempUserData.userId,
+                username: tempUserData.username,
+                name: tempUserData.name,
+                role: tempUserData.role
+            }));
+            navigate('/');
         }
     };
 
@@ -83,6 +137,17 @@ export const LoginForm: React.FC = () => {
                             </div>
                         )}
 
+                        {showResetButton && (
+                            <button
+                                type="button"
+                                onClick={handleResetPassword}
+                                className="w-full mb-4 flex items-center justify-center gap-2 px-6 py-3 bg-yellow-100 text-yellow-700 rounded-xl font-semibold hover:bg-yellow-200 transition-all border-2 border-yellow-300"
+                            >
+                                <Key className="w-5 h-5" />
+                                Сбросить пароль
+                            </button>
+                        )}
+
                         <Button type="submit" isLoading={isLoading}>
                             Войти
                         </Button>
@@ -100,6 +165,18 @@ export const LoginForm: React.FC = () => {
                     </form>
                 </div>
             </div>
+
+            {showChangePasswordModal && tempUserData && (
+                <ChangePasswordModal
+                    userId={tempUserData.userId}
+                    username={tempUserData.username}
+                    onSuccess={handlePasswordChangeSuccess}
+                    onCancel={() => {
+                        setShowChangePasswordModal(false);
+                        setTempUserData(null);
+                    }}
+                />
+            )}
         </div>
     );
 };

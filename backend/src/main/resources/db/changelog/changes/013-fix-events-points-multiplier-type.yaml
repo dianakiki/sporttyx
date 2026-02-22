@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-fix-events-points-multiplier-type
+      author: sporttyx
+      changes:
+        - modifyDataType:
+            tableName: events
+            columnName: points_multiplier
+            newDataType: DOUBLE PRECISION

@@ -11,4 +11,5 @@ public class AuthResponse {
     private String username;
     private String name;
     private String role;
+    private Boolean passwordResetRequired;
 }

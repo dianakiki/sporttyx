@@ -17,12 +17,18 @@ public class AuthController {
     @Autowired
     private AuthService authService;
     
+    /**
+     * Регистрация нового пользователя
+     */
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
         AuthResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
+    /**
+     * Вход в систему (аутентификация)
+     */
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);

@@ -19,27 +19,45 @@ public class ActivityController {
     @Autowired
     private ActivityService activityService;
     
+    /**
+     * Получить все активности в системе
+     */
     @GetMapping("/activities/all")
     public ResponseEntity<List<ActivityResponse>> getAllActivities() {
         List<ActivityResponse> activities = activityService.getAllActivities();
         return ResponseEntity.ok(activities);
     }
     
+    /**
+     * Получить одну активность по ID
+     */
+    @GetMapping("/activities/{id}")
+    public ResponseEntity<ActivityResponse> getActivityById(@PathVariable Long id) {
+        ActivityResponse activity = activityService.getActivityById(id);
+        return ResponseEntity.ok(activity);
+    }
+    
+    /**
+     * Получить все активности конкретной команды
+     */
     @GetMapping("/teams/{teamId}/activities")
     public ResponseEntity<List<ActivityResponse>> getTeamActivities(@PathVariable Long teamId) {
         List<ActivityResponse> activities = activityService.getTeamActivities(teamId);
         return ResponseEntity.ok(activities);
     }
     
+    /**
+     * Создать новую активность с фото (опционально)
+     */
     @PostMapping("/activities")
     public ResponseEntity<CreateActivityResponse> createActivity(
             @RequestParam Long teamId,
             @RequestParam Long participantId,
             @RequestParam String type,
             @RequestParam Integer energy,
-            @RequestParam(required = false) MultipartFile photo) {
+            @RequestParam(required = false) List<MultipartFile> photos) {
         CreateActivityResponse response = activityService.createActivity(
-                teamId, participantId, type, energy, photo);
+                teamId, participantId, type, energy, photos);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

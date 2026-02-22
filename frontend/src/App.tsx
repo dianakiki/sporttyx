@@ -4,6 +4,7 @@ import { RegistrationForm } from './components/RegistrationForm';
 import { LoginForm } from './components/LoginForm';
 import { ParticipantProfile } from './components/ParticipantProfile';
 import { AddTeamForm } from './components/AddTeamForm';
+import { CreateTeamForm } from './components/CreateTeamForm';
 import { AddActivityForm } from './components/AddActivityForm';
 import { TeamProfile } from './components/TeamProfile';
 import { TeamTracker } from './components/TeamTracker';
@@ -15,6 +16,9 @@ import { TeamView } from './components/TeamView';
 import { ActivityView } from './components/ActivityView';
 import { ActivityFeed } from './components/ActivityFeed';
 import { AdminPanel } from './components/AdminPanel';
+import { HomePage } from './components/HomePage';
+import { EventDetail } from './components/EventDetail';
+import { ModerationPanel } from './components/ModerationPanel';
 import { MainLayout } from './layouts/MainLayout';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -35,7 +39,7 @@ function App() {
           path="/"
           element={
             <MainLayout>
-              <TeamTracker />
+              <HomePage />
             </MainLayout>
           }
         />
@@ -65,6 +69,16 @@ function App() {
             <PrivateRoute>
               <MainLayout>
                 <EditTeam />
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/create-team"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <CreateTeamForm />
               </MainLayout>
             </PrivateRoute>
           }
@@ -145,6 +159,26 @@ function App() {
             <PrivateRoute>
               <MainLayout>
                 <AdminPanel />
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/event/:eventId"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <EventDetail />
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/moderation"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <ModerationPanel />
               </MainLayout>
             </PrivateRoute>
           }

@@ -35,6 +35,7 @@ export const AddActivityForm: React.FC = () => {
     const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [isTeamBased, setIsTeamBased] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -64,7 +65,7 @@ export const AddActivityForm: React.FC = () => {
             const token = localStorage.getItem('token');
             const userId = localStorage.getItem('userId');
             
-            // Fetch user's team
+            // Fetch user's team and event
             const userResponse = await fetch(`/api/participants/${userId}`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
@@ -74,16 +75,38 @@ export const AddActivityForm: React.FC = () => {
                 if (userData.teamId) {
                     setSelectedTeamId(userData.teamId.toString());
                 }
-            }
-            
-            // Fetch activity types
-            const typesResponse = await fetch('/api/activity-types', {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-            
-            if (typesResponse.ok) {
-                const typesData = await typesResponse.json();
-                setActivityTypes(typesData);
+                
+                // Fetch event info to check if it's team-based
+                if (userData.eventId) {
+                    const eventResponse = await fetch(`/api/events/${userData.eventId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    });
+                    
+                    if (eventResponse.ok) {
+                        const eventData = await eventResponse.json();
+                        setIsTeamBased(eventData.teamBasedCompetition !== false);
+                    }
+                    
+                    // Fetch activity types for the user's event
+                    const typesResponse = await fetch(`/api/activity-types?eventId=${userData.eventId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    });
+                    
+                    if (typesResponse.ok) {
+                        const typesData = await typesResponse.json();
+                        setActivityTypes(typesData);
+                    }
+                } else {
+                    // If no event, fetch all activity types (fallback)
+                    const typesResponse = await fetch('/api/activity-types', {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    });
+                    
+                    if (typesResponse.ok) {
+                        const typesData = await typesResponse.json();
+                        setActivityTypes(typesData);
+                    }
+                }
             }
         } catch (err) {
             console.error('Error fetching data:', err);
@@ -102,26 +125,9 @@ export const AddActivityForm: React.FC = () => {
             if (response.ok) {
                 const data = await response.json();
                 setParticipants(data);
-            } else {
-                // Мок-данные для демонстрации
-                const mockParticipants: Participant[] = [
-                    { id: 1, name: 'Иван Иванов' },
-                    { id: 2, name: 'Мария Петрова' },
-                    { id: 3, name: 'Алексей Сидоров' },
-                    { id: 4, name: 'Елена Смирнова' },
-                ];
-                setParticipants(mockParticipants);
             }
         } catch (err) {
             console.error('Error fetching participants:', err);
-            // Мок-данные при ошибке
-            const mockParticipants: Participant[] = [
-                { id: 1, name: 'Иван Иванов' },
-                { id: 2, name: 'Мария Петрова' },
-                { id: 3, name: 'Алексей Сидоров' },
-                { id: 4, name: 'Елена Смирнова' },
-            ];
-            setParticipants(mockParticipants);
         }
     };
 
@@ -176,43 +182,61 @@ export const AddActivityForm: React.FC = () => {
         e.preventDefault();
         setError('');
 
-        if (!selectedTeamId || selectedParticipantIds.length === 0 || !selectedActivityTypeId || !energy) {
-            setError('Заполните все обязательные поля');
+        // Prevent multiple submissions
+        if (isLoading) {
             return;
+        }
+
+        // Validation based on event type
+        if (isTeamBased) {
+            if (!selectedTeamId || selectedParticipantIds.length === 0 || !selectedActivityTypeId || !energy) {
+                setError('Заполните все обязательные поля');
+                return;
+            }
+        } else {
+            if (!selectedActivityTypeId || !energy) {
+                setError('Заполните все обязательные поля');
+                return;
+            }
         }
 
         setIsLoading(true);
 
         try {
             const token = localStorage.getItem('token');
+            const userId = localStorage.getItem('userId');
             const activityType = activityTypes.find(at => at.id.toString() === selectedActivityTypeId);
             
-            // Create activity for each selected participant
-            const promises = selectedParticipantIds.map(participantId => {
-                const formData = new FormData();
+            const formData = new FormData();
+            
+            if (isTeamBased) {
+                // For team-based events: create ONE activity for the team
+                // Use current user as the one who logged the activity
                 formData.append('teamId', selectedTeamId);
-                formData.append('participantId', participantId.toString());
-                formData.append('type', activityType?.name || '');
-                formData.append('energy', energy);
-                
-                photos.forEach((photo) => {
-                    formData.append('photos', photo);
-                });
-
-                return fetch('/api/activities', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData,
-                });
+                formData.append('participantId', userId || '');
+            } else {
+                // For individual events: create activity for current user only
+                formData.append('teamId', selectedTeamId || '0'); // Some default if no team
+                formData.append('participantId', userId || '');
+            }
+            
+            formData.append('type', activityType?.name || '');
+            formData.append('energy', energy);
+            
+            photos.forEach((photo) => {
+                formData.append('photos', photo);
             });
 
-            const responses = await Promise.all(promises);
-            const allSuccess = responses.every(r => r.ok);
+            const response = await fetch('/api/activities', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData,
+            });
 
-            if (allSuccess) {
+            if (response.ok) {
                 navigate(-1);
             } else {
-                setError('Ошибка добавления некоторых активностей');
+                setError('Ошибка добавления активности');
             }
         } catch (err) {
             setError('Ошибка подключения к серверу');
@@ -234,10 +258,10 @@ export const AddActivityForm: React.FC = () => {
                     </div>
 
                     <form onSubmit={handleSubmit}>
-                        {selectedTeamId && participants.length > 0 && (
+                        {isTeamBased && selectedTeamId && participants.length > 0 && (
                             <div className="mb-6">
                                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                    Участники
+                                    Кто участвовал? (выберите участников команды)
                                 </label>
                                 <div className="flex flex-wrap gap-2">
                                     <button

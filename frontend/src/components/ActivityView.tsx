@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Activity as ActivityIcon, User, Trophy, Calendar, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { ReactionPanel } from './ReactionPanel';
+import { CommentSection } from './CommentSection';
 
 interface Activity {
     id: number;
@@ -10,8 +12,13 @@ interface Activity {
     createdAt: string;
     participantId: number;
     participantName: string;
-    teamId: number;
-    teamName: string;
+    teamId?: number;
+    teamName?: string;
+    teamBasedCompetition?: boolean;
+    reactionCounts?: { [key: string]: number };
+    userReaction?: string;
+    totalReactions?: number;
+    commentCount?: number;
 }
 
 export const ActivityView: React.FC = () => {
@@ -107,15 +114,45 @@ export const ActivityView: React.FC = () => {
         setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
     };
 
+    const handleReaction = async (reactionType: string) => {
+        if (!activity) return;
+        
+        try {
+            const token = localStorage.getItem('token');
+            
+            if (activity.userReaction === reactionType) {
+                await fetch(`/api/activities/${activity.id}/reactions`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+            } else {
+                await fetch(`/api/activities/${activity.id}/reactions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ reactionType }),
+                });
+            }
+            
+            fetchActivity();
+        } catch (err) {
+            console.error('Error reacting to activity:', err);
+        }
+    };
+
     return (
         <div className="min-h-screen p-6 md:p-8">
             <div className="max-w-4xl mx-auto">
                 <button
-                    onClick={() => navigate(-1)}
+                    onClick={() => navigate('/')}
                     className="flex items-center gap-2 text-slate-600 hover:text-blue-600 mb-6 transition-colors"
                 >
                     <ArrowLeft className="w-5 h-5" />
-                    Назад
+                    Назад к ленте
                 </button>
 
                 <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
@@ -203,12 +240,14 @@ export const ActivityView: React.FC = () => {
                         </div>
 
                         {/* Info Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div className={`grid grid-cols-1 ${activity.teamBasedCompetition && activity.teamId ? 'md:grid-cols-2' : ''} gap-6 mb-8`}>
                             {/* Participant Card */}
                             <div className="p-6 bg-slate-50 rounded-2xl border-2 border-slate-200">
                                 <div className="flex items-center gap-3 mb-2">
                                     <User className="w-5 h-5 text-blue-600" />
-                                    <h3 className="font-bold text-slate-700">Участник</h3>
+                                    <h3 className="font-bold text-slate-700">
+                                        {activity.teamBasedCompetition ? 'Автор записи' : 'Участник'}
+                                    </h3>
                                 </div>
                                 <p 
                                     className="text-lg font-semibold text-slate-900 hover:text-blue-600 cursor-pointer transition-colors"
@@ -218,23 +257,25 @@ export const ActivityView: React.FC = () => {
                                 </p>
                             </div>
 
-                            {/* Team Card */}
-                            <div className="p-6 bg-slate-50 rounded-2xl border-2 border-slate-200">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <Trophy className="w-5 h-5 text-blue-600" />
-                                    <h3 className="font-bold text-slate-700">Команда</h3>
+                            {/* Team Card - только для командных мероприятий */}
+                            {activity.teamBasedCompetition && activity.teamId && activity.teamName && (
+                                <div className="p-6 bg-slate-50 rounded-2xl border-2 border-slate-200">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <Trophy className="w-5 h-5 text-blue-600" />
+                                        <h3 className="font-bold text-slate-700">Команда</h3>
+                                    </div>
+                                    <p 
+                                        className="text-lg font-semibold text-slate-900 hover:text-blue-600 cursor-pointer transition-colors"
+                                        onClick={() => navigate(`/team/${activity.teamId}`)}
+                                    >
+                                        {activity.teamName}
+                                    </p>
                                 </div>
-                                <p 
-                                    className="text-lg font-semibold text-slate-900 hover:text-blue-600 cursor-pointer transition-colors"
-                                    onClick={() => navigate(`/team/${activity.teamId}`)}
-                                >
-                                    {activity.teamName}
-                                </p>
-                            </div>
+                            )}
                         </div>
 
                         {/* Date */}
-                        <div className="p-6 bg-gradient-to-r from-blue-50 to-sky-50 rounded-2xl border-2 border-blue-100">
+                        <div className="p-6 bg-gradient-to-r from-blue-50 to-sky-50 rounded-2xl border-2 border-blue-100 mb-8">
                             <div className="flex items-center justify-center gap-3">
                                 <Calendar className="w-6 h-6 text-blue-600" />
                                 <div>
@@ -251,6 +292,20 @@ export const ActivityView: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Reactions */}
+                        <div className="mb-8">
+                            <h3 className="text-lg font-bold text-slate-900 mb-4">Реакции</h3>
+                            <ReactionPanel
+                                activityId={activity.id}
+                                reactionCounts={activity.reactionCounts}
+                                userReaction={activity.userReaction}
+                                onReact={handleReaction}
+                            />
+                        </div>
+
+                        {/* Comments */}
+                        <CommentSection activityId={activity.id} />
                     </div>
                 </div>
             </div>

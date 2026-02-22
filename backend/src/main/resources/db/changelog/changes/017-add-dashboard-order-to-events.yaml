@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-add-dashboard-order-to-events
+      author: system
+      changes:
+        - addColumn:
+            tableName: events
+            columns:
+              - column:
+                  name: dashboard_order
+                  type: varchar(500)
+                  remarks: "Порядок отображения дашбордов на главной странице"

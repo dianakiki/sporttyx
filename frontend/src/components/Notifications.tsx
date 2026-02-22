@@ -32,39 +32,9 @@ export const Notifications: React.FC = () => {
             if (response.ok) {
                 const data = await response.json();
                 setInvitations(data);
-            } else {
-                // Mock data for demonstration
-                const mockInvitations: TeamInvitation[] = [
-                    {
-                        id: 1,
-                        teamId: 2,
-                        teamName: 'Спортивные Львы',
-                        invitedBy: 'Мария Петрова',
-                        invitedAt: '2024-02-10T10:30:00'
-                    },
-                    {
-                        id: 2,
-                        teamId: 3,
-                        teamName: 'Энергия Победы',
-                        invitedBy: 'Алексей Сидоров',
-                        invitedAt: '2024-02-09T15:45:00'
-                    }
-                ];
-                setInvitations(mockInvitations);
             }
         } catch (err) {
             console.error('Error fetching invitations:', err);
-            // Mock data on error
-            const mockInvitations: TeamInvitation[] = [
-                {
-                    id: 1,
-                    teamId: 2,
-                    teamName: 'Спортивные Львы',
-                    invitedBy: 'Мария Петрова',
-                    invitedAt: '2024-02-10T10:30:00'
-                }
-            ];
-            setInvitations(mockInvitations);
         } finally {
             setIsLoading(false);
         }

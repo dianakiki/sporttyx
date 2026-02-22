@@ -19,3 +19,29 @@ databaseChangeLog:
       file: db/changelog/changes/010-refactor-activities-to-use-activity-type-id.yaml
   - include:
       file: db/changelog/changes/011-add-message-to-team-invitations.yaml
+  - include:
+      file: db/changelog/changes/012-create-events-table.yaml
+  - include:
+      file: db/changelog/changes/013-fix-events-points-multiplier-type.yaml
+  - include:
+      file: db/changelog/changes/014-update-events-dashboard-and-homepage.yaml
+  - include:
+      file: db/changelog/changes/015-add-event-id-to-teams-and-activities.yaml
+  - include:
+      file: db/changelog/changes/016-add-password-reset-required.yaml
+  - include:
+      file: db/changelog/changes/017-add-dashboard-order-to-events.yaml
+  - include:
+      file: db/changelog/changes/018-create-activity-photos-table.yaml
+  - include:
+      file: db/changelog/changes/019-create-activity-reactions-table.yaml
+  - include:
+      file: db/changelog/changes/020-create-activity-comments-table.yaml
+  - include:
+      file: db/changelog/changes/021-create-comment-reactions-table.yaml
+  - include:
+      file: db/changelog/changes/022-add-moderator-role.yaml
+  - include:
+      file: db/changelog/changes/023-add-activity-moderation.yaml
+  - include:
+      file: db/changelog/changes/024-convert-activity-status-to-varchar.yaml

@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 024-convert-activity-status-to-varchar
+      author: system
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE activities ALTER COLUMN status TYPE VARCHAR(20) USING status::text;
+              DROP TYPE activity_status;

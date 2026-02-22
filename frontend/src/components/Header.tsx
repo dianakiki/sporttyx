@@ -90,7 +90,7 @@ export const Header: React.FC = () => {
                             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all">
                                 <Home className="w-6 h-6 text-white" />
                             </div>
-                            <span className="text-xl font-bold hidden sm:block">DiaSporttyx</span>
+                            <span className="text-xl font-bold hidden sm:block">DiaEvent</span>
                         </button>
 
                         <button
@@ -108,6 +108,16 @@ export const Header: React.FC = () => {
                             >
                                 <Shield className="w-5 h-5" />
                                 <span className="hidden md:inline">Администрирование</span>
+                            </button>
+                        )}
+
+                        {(userRole === 'MODERATOR' || userRole === 'ADMIN') && (
+                            <button
+                                onClick={() => navigate('/moderation')}
+                                className="flex items-center gap-2 px-4 py-2.5 text-orange-700 hover:text-orange-600 hover:bg-orange-50 rounded-xl font-semibold transition-all"
+                            >
+                                <Shield className="w-5 h-5" />
+                                <span className="hidden md:inline">Модерация</span>
                             </button>
                         )}
                     </div>

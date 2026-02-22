@@ -1,0 +1,58 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-create-comment-reactions-table
+      author: diana
+      changes:
+        - createTable:
+            tableName: comment_reactions
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: comment_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_comment_reactions_comment
+                    references: activity_comments(id)
+                    deleteCascade: true
+              - column:
+                  name: participant_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_comment_reactions_participant
+                    references: participants(id)
+                    deleteCascade: true
+              - column:
+                  name: reaction_type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: comment_reactions
+            columnNames: comment_id, participant_id
+            constraintName: uk_comment_participant_reaction
+        - createIndex:
+            tableName: comment_reactions
+            indexName: idx_comment_reactions_comment_id
+            columns:
+              - column:
+                  name: comment_id
+        - createIndex:
+            tableName: comment_reactions
+            indexName: idx_comment_reactions_participant_id
+            columns:
+              - column:
+                  name: participant_id

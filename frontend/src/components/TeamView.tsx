@@ -16,6 +16,7 @@ interface Activity {
     createdAt: string;
     participantName: string;
     photoUrl?: string;
+    photoUrls?: string[];
 }
 
 interface Team {
@@ -69,25 +70,6 @@ export const TeamView: React.FC = () => {
                     const isMember = teamData.participants.some((p: Participant) => p.id === parseInt(userId));
                     setIsTeamMember(isMember);
                 }
-            } else {
-                // Mock data
-                setTeam({
-                    id: parseInt(teamId || '1'),
-                    name: 'Спортивные Львы',
-                    imageUrl: 'https://via.placeholder.com/200x200/10b981/ffffff?text=Team',
-                    totalPoints: 2180,
-                    motto: 'Сила в единстве! 💪',
-                    rank: 2
-                });
-
-                setParticipants([
-                    { id: 5, name: 'Мария Петрова', role: 'Капитан' },
-                    { id: 6, name: 'Сергей Иванов', role: 'Участник' },
-                    { id: 7, name: 'Анна Смирнова', role: 'Участник' },
-                    { id: 8, name: 'Дмитрий Козлов', role: 'Участник' },
-                    { id: 9, name: 'Елена Волкова', role: 'Участник' },
-                    { id: 10, name: 'Игорь Соколов', role: 'Участник' },
-                ]);
             }
 
             // Fetch activities
@@ -100,14 +82,6 @@ export const TeamView: React.FC = () => {
             if (activitiesResponse.ok) {
                 const activitiesData = await activitiesResponse.json();
                 setActivities(activitiesData);
-            } else {
-                // Mock activities
-                setActivities([
-                    { id: 10, type: 'Плавание', energy: 200, createdAt: '2024-02-11T10:00:00', participantName: 'Мария Петрова', photoUrl: 'https://via.placeholder.com/400x300/10b981/ffffff?text=Swimming' },
-                    { id: 11, type: 'Велосипед', energy: 180, createdAt: '2024-02-10T14:30:00', participantName: 'Сергей Иванов', photoUrl: 'https://via.placeholder.com/400x300/f59e0b/ffffff?text=Cycling' },
-                    { id: 12, type: 'Йога', energy: 100, createdAt: '2024-02-10T09:00:00', participantName: 'Анна Смирнова' },
-                    { id: 13, type: 'Бег', energy: 150, createdAt: '2024-02-09T07:00:00', participantName: 'Дмитрий Козлов', photoUrl: 'https://via.placeholder.com/400x300/3b82f6/ffffff?text=Running' },
-                ]);
             }
 
             // Fetch activity heatmap
@@ -123,22 +97,6 @@ export const TeamView: React.FC = () => {
             }
         } catch (err) {
             console.error('Error fetching team:', err);
-            // Mock data on error
-            setTeam({
-                id: parseInt(teamId || '1'),
-                name: 'Спортивные Львы',
-                imageUrl: 'https://via.placeholder.com/200x200/10b981/ffffff?text=Team',
-                totalPoints: 2180,
-                motto: 'Сила в единстве! 💪',
-                rank: 2
-            });
-            setParticipants([
-                { id: 5, name: 'Мария Петрова', role: 'Капитан' },
-                { id: 6, name: 'Сергей Иванов', role: 'Участник' }
-            ]);
-            setActivities([
-                { id: 10, type: 'Плавание', energy: 200, createdAt: '2024-02-11T10:00:00', participantName: 'Мария Петрова', photoUrl: 'https://via.placeholder.com/400x300/10b981/ffffff?text=Swimming' }
-            ]);
         } finally {
             setIsLoading(false);
         }
@@ -279,10 +237,10 @@ export const TeamView: React.FC = () => {
                                     className="bg-white rounded-2xl border-2 border-slate-200 hover:border-green-300 hover:shadow-lg transition-all overflow-hidden cursor-pointer"
                                 >
                                     {/* Activity Photo */}
-                                    {activity.photoUrl ? (
+                                    {(activity.photoUrls && activity.photoUrls.length > 0) || activity.photoUrl ? (
                                         <div className="w-full h-48 overflow-hidden bg-slate-100">
                                             <img 
-                                                src={activity.photoUrl} 
+                                                src={(activity.photoUrls && activity.photoUrls.length > 0) ? activity.photoUrls[0] : activity.photoUrl} 
                                                 alt={activity.type}
                                                 className="w-full h-full object-cover"
                                             />

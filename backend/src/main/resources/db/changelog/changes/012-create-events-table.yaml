@@ -1,0 +1,141 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-create-events-table
+      author: sporttyx
+      changes:
+        - createTable:
+            tableName: events
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: start_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: DRAFT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: visibility
+                  type: VARCHAR(20)
+                  defaultValue: PUBLIC
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requires_activity_approval
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: max_teams
+                  type: INTEGER
+              - column:
+                  name: max_participants
+                  type: INTEGER
+              - column:
+                  name: registration_deadline
+                  type: TIMESTAMP
+              - column:
+                  name: points_multiplier
+                  type: DECIMAL(5,2)
+                  defaultValueNumeric: 1.0
+              - column:
+                  name: custom_scoring_rules
+                  type: TEXT
+              - column:
+                  name: banner_image_url
+                  type: VARCHAR(500)
+              - column:
+                  name: logo_url
+                  type: VARCHAR(500)
+              - column:
+                  name: primary_color
+                  type: VARCHAR(7)
+              - column:
+                  name: notifications_enabled
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reminder_days_before
+                  type: INTEGER
+              - column:
+                  name: external_event_id
+                  type: VARCHAR(100)
+              - column:
+                  name: webhook_url
+                  type: VARCHAR(500)
+              - column:
+                  name: pinned_on_homepage
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dashboard_type
+                  type: VARCHAR(20)
+                  defaultValue: RANKING
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+        - createTable:
+            tableName: event_admins
+            columns:
+              - column:
+                  name: event_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: participant_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: event_admins
+            columnNames: event_id, participant_id
+            constraintName: pk_event_admins
+        - addForeignKeyConstraint:
+            baseTableName: event_admins
+            baseColumnNames: event_id
+            referencedTableName: events
+            referencedColumnNames: id
+            constraintName: fk_event_admins_event
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: event_admins
+            baseColumnNames: participant_id
+            referencedTableName: participants
+            referencedColumnNames: id
+            constraintName: fk_event_admins_participant
+            onDelete: CASCADE

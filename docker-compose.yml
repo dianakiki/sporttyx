@@ -37,8 +37,8 @@ services:
   backend:
     # Собираем образ из Dockerfile в папке backend
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/Dockerfile
     # Имя контейнера
     container_name: sporttyx-backend
     # Проброс портов: хост:контейнер
@@ -54,6 +54,9 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       # Пароль БД
       SPRING_DATASOURCE_PASSWORD: postgres
+    # Постоянное хранилище для загруженных фото
+    volumes:
+      - uploads-data:/app/uploads
     # Зависимости: backend запустится только после того, как postgres будет здоров
     depends_on:
       postgres:
@@ -81,3 +84,5 @@ volumes:
   # Volume для данных PostgreSQL
   # Создается автоматически и управляется Docker
   postgres-data:
+  # Volume для загруженных фото активностей
+  uploads-data:

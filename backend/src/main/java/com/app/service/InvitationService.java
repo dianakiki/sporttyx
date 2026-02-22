@@ -43,6 +43,7 @@ public class InvitationService {
                 .collect(Collectors.toList());
     }
     
+    @Transactional
     public TeamInvitation createInvitation(Long teamId, Long participantId, Long invitedById, String message) {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new RuntimeException("Team not found"));
@@ -53,22 +54,35 @@ public class InvitationService {
         Participant invitedBy = participantRepository.findById(invitedById)
                 .orElseThrow(() -> new RuntimeException("Inviter not found"));
         
+        // Проверяем, что участник еще не в команде
         if (teamParticipantRepository.findByTeamIdAndParticipantId(teamId, participantId).isPresent()) {
-            throw new RuntimeException("Participant is already in the team");
+            throw new RuntimeException(participant.getName() + " уже состоит в этой команде");
         }
         
-        if (invitationRepository.findByTeamIdAndParticipantIdAndStatus(teamId, participantId, InvitationStatus.PENDING).isPresent()) {
-            throw new RuntimeException("Invitation already exists");
+        // Проверяем, что участник не состоит в другой команде
+        List<TeamParticipant> existingTeams = teamParticipantRepository.findByParticipantId(participantId);
+        if (!existingTeams.isEmpty()) {
+            String existingTeamName = existingTeams.get(0).getTeam().getName();
+            throw new RuntimeException(participant.getName() + " уже состоит в команде \"" + existingTeamName + "\". Один участник может быть только в одной команде.");
         }
         
-        TeamInvitation invitation = new TeamInvitation();
-        invitation.setTeam(team);
-        invitation.setParticipant(participant);
-        invitation.setInvitedBy(invitedBy);
-        invitation.setStatus(InvitationStatus.PENDING);
-        invitation.setMessage(message);
+        // Сразу добавляем участника в команду
+        TeamParticipant teamParticipant = new TeamParticipant();
+        teamParticipant.setTeam(team);
+        teamParticipant.setParticipant(participant);
+        teamParticipant.setRole(TeamRole.PARTICIPANT);
+        teamParticipantRepository.save(teamParticipant);
         
-        return invitationRepository.save(invitation);
+        // Создаем уведомление (не приглашение)
+        TeamInvitation notification = new TeamInvitation();
+        notification.setTeam(team);
+        notification.setParticipant(participant);
+        notification.setInvitedBy(invitedBy);
+        notification.setStatus(InvitationStatus.ACCEPTED); // Сразу принято
+        notification.setMessage(message != null ? message : "Вас добавили в команду " + team.getName());
+        notification.setRespondedAt(LocalDateTime.now());
+        
+        return invitationRepository.save(notification);
     }
     
     @Transactional
