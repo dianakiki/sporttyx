@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Trophy, ArrowRight } from 'lucide-react';
-import mockApi from '../api/mockApi';
+import { Calendar, Trophy, ArrowRight, Activity, List } from 'lucide-react';
+import { TeamTracker } from './TeamTracker';
+import { ActivityFeed } from './ActivityFeed';
+import { SimpleList } from './SimpleList';
 
 interface Event {
     id: number;
@@ -11,11 +13,55 @@ interface Event {
     endDate: string;
     status: string;
     photoUrl?: string;
+    displayOnHomepage?: boolean;
+    dashboardTypes?: string[];
+    dashboardOrder?: string[];
+    teamBasedCompetition?: boolean;
 }
 
+const mockDisplayedEvent: Event = {
+    id: 1,
+    name: "Весенний Марафон 2024",
+    description: "Ежегодный марафон для всех желающих",
+    startDate: "2024-03-15T09:00:00",
+    endDate: "2024-03-15T15:00:00",
+    status: "ACTIVE",
+    displayOnHomepage: true,
+    dashboardTypes: ['RANKING', 'TRACKER', 'FEED', 'SIMPLE_LIST'],
+    dashboardOrder: ['RANKING', 'TRACKER', 'FEED', 'SIMPLE_LIST'],
+    teamBasedCompetition: true
+};
+
+const mockEvents: Event[] = [
+    {
+        id: 1,
+        name: "Весенний Марафон 2024",
+        description: "Ежегодный марафон для всех желающих",
+        startDate: "2024-03-15T09:00:00",
+        endDate: "2024-03-15T15:00:00",
+        status: "ACTIVE",
+        photoUrl: "https://picsum.photos/seed/event1/800/400",
+        dashboardTypes: ['RANKING', 'TRACKER', 'FEED'],
+        teamBasedCompetition: true
+    },
+    {
+        id: 2,
+        name: "Велогонка по городу",
+        description: "Соревнование среди велосипедистов",
+        startDate: "2024-04-01T10:00:00",
+        endDate: "2024-04-01T14:00:00",
+        status: "UPCOMING",
+        photoUrl: "https://picsum.photos/seed/event2/800/400",
+        dashboardTypes: ['RANKING', 'FEED'],
+        teamBasedCompetition: false
+    }
+];
+
 export const HomePage: React.FC = () => {
-    const [events, setEvents] = useState<Event[]>([]);
+    const [displayedEvent, setDisplayedEvent] = useState<Event | null>(null);
+    const [allEvents, setAllEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeDashboard, setActiveDashboard] = useState<string>('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -24,12 +70,88 @@ export const HomePage: React.FC = () => {
 
     const loadEvents = async () => {
         try {
-            const data = await mockApi.events.getAll();
-            setEvents(data);
+            await new Promise(resolve => setTimeout(resolve, 300));
+            setDisplayedEvent(mockDisplayedEvent);
+            const orderedDashboards = mockDisplayedEvent.dashboardOrder || mockDisplayedEvent.dashboardTypes || [];
+            if (orderedDashboards.length > 0) {
+                setActiveDashboard(orderedDashboards[0]);
+            }
         } catch (error) {
             console.error('Error loading events:', error);
+            setAllEvents(mockEvents);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const renderDashboard = () => {
+        if (!displayedEvent || !displayedEvent.dashboardTypes?.includes(activeDashboard)) {
+            return null;
+        }
+        
+        const orderedDashboards = displayedEvent.dashboardOrder || displayedEvent.dashboardTypes;
+        
+        switch (activeDashboard) {
+            case 'RANKING':
+            case 'TRACKER':
+                return <TeamTracker 
+                    dashboardTypes={orderedDashboards} 
+                    activeDashboard={activeDashboard}
+                    setActiveDashboard={setActiveDashboard}
+                    eventId={displayedEvent.id}
+                    teamBasedCompetition={displayedEvent.teamBasedCompetition}
+                />;
+            case 'FEED':
+                return <ActivityFeed 
+                    dashboardTypes={orderedDashboards} 
+                    activeDashboard={activeDashboard}
+                    setActiveDashboard={setActiveDashboard}
+                    eventId={displayedEvent.id}
+                />;
+            case 'SIMPLE_LIST':
+                return <SimpleList 
+                    dashboardTypes={orderedDashboards} 
+                    activeDashboard={activeDashboard}
+                    setActiveDashboard={setActiveDashboard}
+                    eventId={displayedEvent.id}
+                    teamBasedCompetition={displayedEvent.teamBasedCompetition}
+                />;
+            default:
+                return null;
+        }
+    };
+
+    const translateStatus = (status: string) => {
+        const translations: { [key: string]: string } = {
+            'ACTIVE': 'Активное',
+            'UPCOMING': 'Предстоящее',
+            'COMPLETED': 'Завершено'
+        };
+        return translations[status] || status;
+    };
+
+    const translateDashboardType = (type: string) => {
+        const translations: { [key: string]: string } = {
+            'RANKING': 'Рейтинг',
+            'TRACKER': 'Трекер',
+            'FEED': 'Лента',
+            'SIMPLE_LIST': 'Список'
+        };
+        return translations[type] || type;
+    };
+
+    const getDashboardIcon = (type: string) => {
+        switch (type) {
+            case 'RANKING':
+                return <Trophy className="w-5 h-5" />;
+            case 'TRACKER':
+                return <Activity className="w-5 h-5" />;
+            case 'FEED':
+                return <Calendar className="w-5 h-5" />;
+            case 'SIMPLE_LIST':
+                return <List className="w-5 h-5" />;
+            default:
+                return <Trophy className="w-5 h-5" />;
         }
     };
 
@@ -37,6 +159,16 @@ export const HomePage: React.FC = () => {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-xl text-slate-600">Загрузка...</div>
+            </div>
+        );
+    }
+
+    if (displayedEvent) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+                <div className="max-w-7xl mx-auto px-6 py-6">
+                    {renderDashboard()}
+                </div>
             </div>
         );
     }
@@ -49,7 +181,7 @@ export const HomePage: React.FC = () => {
                     <p className="text-xl text-slate-600">Выберите мероприятие для участия</p>
                 </div>
 
-                {events.length === 0 ? (
+                {allEvents.length === 0 ? (
                     <div className="bg-white rounded-3xl shadow-xl p-12 text-center">
                         <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                         <h2 className="text-2xl font-bold text-slate-900 mb-2">Нет активных мероприятий</h2>
@@ -57,7 +189,7 @@ export const HomePage: React.FC = () => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {events.map(event => (
+                        {allEvents.map(event => (
                             <div
                                 key={event.id}
                                 className="bg-white rounded-3xl shadow-xl p-8 hover:shadow-2xl transition-all cursor-pointer transform hover:-translate-y-1"
@@ -90,13 +222,19 @@ export const HomePage: React.FC = () => {
                                     </div>
 
                                     <div className="flex gap-2 flex-wrap">
-                                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                                            {event.status === 'UPCOMING' ? 'Предстоящее' : 'Активное'}
+                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                            event.status === 'ACTIVE' 
+                                                ? 'bg-green-100 text-green-700' 
+                                                : 'bg-slate-100 text-slate-700'
+                                        }`}>
+                                            {translateStatus(event.status)}
                                         </span>
-                                        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold flex items-center gap-1">
-                                            <Trophy className="w-4 h-4" />
-                                            Соревнование
-                                        </span>
+                                        {event.dashboardTypes?.map(type => (
+                                            <span key={type} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold flex items-center gap-1">
+                                                {getDashboardIcon(type)}
+                                                {translateDashboardType(type)}
+                                            </span>
+                                        ))}
                                     </div>
                                 </div>
                             </div>

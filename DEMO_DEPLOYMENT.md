@@ -34,6 +34,8 @@
 
 ### Шаг 2: Настройка GitHub Pages
 
+⚠️ **ВАЖНО: Этот шаг ОБЯЗАТЕЛЕН перед первым деплоем!**
+
 1. **Перейдите в настройки репозитория:**
    - Откройте ваш репозиторий на GitHub
    - Нажмите на вкладку "Settings"
@@ -42,7 +44,17 @@
    - В левом меню выберите "Pages"
    - В разделе "Build and deployment"
    - В поле "Source" выберите **"GitHub Actions"**
-   - Сохраните изменения
+   - Нажмите "Save" / "Сохранить"
+   
+3. **Подтвердите включение:**
+   - Страница обновится
+   - Вы должны увидеть сообщение о том, что Pages включен
+   - Если видите ошибку "Not Found", значит Pages еще не активирован
+
+**Примечание:** Без этого шага GitHub Actions не сможет задеплоить приложение и выдаст ошибку:
+```
+Error: Get Pages site failed. Please verify that the repository has Pages enabled
+```
 
 ### Шаг 3: Настройка конфигурации
 
@@ -182,6 +194,20 @@ docker-compose down
 - Убедитесь, что у вас есть права на запуск Actions
 - Проверьте, что изменения были в папке `demo/`
 - Попробуйте запустить workflow вручную: Actions → Deploy Demo → Run workflow
+
+### Проблема: "Get Pages site failed. Please verify that the repository has Pages enabled"
+
+**Причина:** GitHub Pages не включен в настройках репозитория.
+
+**Решение:**
+1. Перейдите в Settings → Pages
+2. В разделе "Build and deployment"
+3. В поле "Source" выберите **"GitHub Actions"** (НЕ "Deploy from a branch")
+4. Нажмите Save
+5. Дождитесь обновления страницы
+6. Запустите workflow заново: Actions → Deploy Demo to GitHub Pages → Re-run all jobs
+
+**Важно:** Этот шаг нужно сделать ПЕРЕД первым запуском GitHub Actions workflow!
 
 ### Проблема: Стили не применяются
 

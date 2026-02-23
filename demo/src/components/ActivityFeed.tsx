@@ -1,57 +1,135 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Flame, ThumbsUp, MessageCircle, Calendar, MapPin } from 'lucide-react';
-import mockApi from '../api/mockApi';
+import { Trophy, Calendar, Activity as ActivityIcon, List } from 'lucide-react';
+import { ActivityCard } from './ActivityCard';
 
 interface Activity {
     id: number;
-    participantId: number;
-    activityType: string;
-    distance: number;
-    duration: number;
-    date: string;
-    description: string;
-    photoUrls: string[];
-    points: number;
-    participant: {
-        firstName: string;
-        lastName: string;
-        photoUrl?: string;
-    };
-    reactions: any[];
-    comments: any[];
+    type: string;
+    energy: number;
+    participantName: string;
+    photoUrl?: string;
+    photoUrls?: string[];
+    createdAt: string;
+    reactionCounts?: { [key: string]: number };
+    userReaction?: string;
+    totalReactions?: number;
+    commentCount?: number;
+    description?: string;
+    participantId?: number;
+    participantAvatarUrl?: string;
+    teamName?: string;
+    teamId?: number;
 }
 
-export const ActivityFeed: React.FC = () => {
+interface ActivityFeedProps {
+    dashboardTypes?: string[];
+    activeDashboard?: string;
+    setActiveDashboard?: (dashboard: string) => void;
+    eventId?: number;
+}
+
+const mockActivities: Activity[] = [
+    {
+        id: 1,
+        type: 'Бег',
+        energy: 52,
+        participantName: 'Демо Пользователь',
+        participantId: 1,
+        participantAvatarUrl: 'https://i.pravatar.cc/150?img=1',
+        teamName: 'Спортивные Энтузиасты',
+        teamId: 1,
+        description: 'Утренняя пробежка в парке',
+        photoUrls: ['https://picsum.photos/seed/run1/800/600'],
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        reactionCounts: { LIKE: 5, FIRE: 3 },
+        commentCount: 2
+    },
+    {
+        id: 2,
+        type: 'Велосипед',
+        energy: 128,
+        participantName: 'Алексей Иванов',
+        participantId: 2,
+        participantAvatarUrl: 'https://i.pravatar.cc/150?img=2',
+        teamName: 'Спортивные Энтузиасты',
+        teamId: 1,
+        description: 'Велопрогулка по набережной',
+        photoUrls: ['https://picsum.photos/seed/bike1/800/600', 'https://picsum.photos/seed/bike2/800/600'],
+        createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+        reactionCounts: { LIKE: 8, FIRE: 2 },
+        commentCount: 1
+    },
+    {
+        id: 3,
+        type: 'Плавание',
+        energy: 75,
+        participantName: 'Мария Петрова',
+        participantId: 3,
+        participantAvatarUrl: 'https://i.pravatar.cc/150?img=5',
+        teamName: 'Спортивные Энтузиасты',
+        teamId: 1,
+        description: 'Плавание в бассейне',
+        photoUrls: ['https://picsum.photos/seed/swim1/800/600'],
+        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        reactionCounts: { LIKE: 3 },
+        commentCount: 0
+    }
+];
+
+export const ActivityFeed: React.FC<ActivityFeedProps> = ({ 
+    dashboardTypes = [], 
+    activeDashboard = 'FEED',
+    setActiveDashboard,
+    eventId
+}) => {
     const [activities, setActivities] = useState<Activity[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         loadActivities();
-    }, []);
+    }, [eventId]);
 
     const loadActivities = async () => {
         try {
-            const data = await mockApi.activities.getAll();
-            setActivities(data);
+            await new Promise(resolve => setTimeout(resolve, 300));
+            setActivities(mockActivities);
         } catch (error) {
             console.error('Error loading activities:', error);
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
-    const getActivityTypeLabel = (type: string) => {
-        const types: { [key: string]: string } = {
-            RUNNING: 'Бег',
-            CYCLING: 'Велосипед',
-            SWIMMING: 'Плавание',
-            WALKING: 'Ходьба',
-            GYM: 'Тренажерный зал'
-        };
-        return types[type] || type;
+    const handleReaction = async (activityId: number, reactionType: string) => {
+        console.log('Reaction:', activityId, reactionType);
     };
 
-    if (loading) {
+    const getDashboardIcon = (type: string) => {
+        switch (type) {
+            case 'RANKING':
+                return <Trophy className="w-5 h-5" />;
+            case 'TRACKER':
+                return <ActivityIcon className="w-5 h-5" />;
+            case 'FEED':
+                return <Calendar className="w-5 h-5" />;
+            case 'SIMPLE_LIST':
+                return <List className="w-5 h-5" />;
+            default:
+                return <Trophy className="w-5 h-5" />;
+        }
+    };
+
+    const translateDashboardType = (type: string) => {
+        const translations: { [key: string]: string } = {
+            'RANKING': 'Рейтинг',
+            'TRACKER': 'Трекер',
+            'FEED': 'Лента',
+            'SIMPLE_LIST': 'Список'
+        };
+        return translations[type] || type;
+    };
+
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-xl text-slate-600">Загрузка...</div>
@@ -60,87 +138,51 @@ export const ActivityFeed: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
+        <div className="min-h-screen p-6 md:p-8">
             <div className="max-w-4xl mx-auto">
-                <h1 className="text-4xl font-bold text-slate-900 mb-8">Лента активностей</h1>
+                <div className="text-center mb-8">
+                    <h1 className="text-4xl font-bold text-slate-900 mb-2">Лента активностей</h1>
+                </div>
+
+                {dashboardTypes.length > 0 && setActiveDashboard && (
+                    <div className="flex gap-4 mb-8 justify-center">
+                        {dashboardTypes.map((type) => (
+                            <button
+                                key={type}
+                                onClick={() => setActiveDashboard(type)}
+                                className={`flex items-center gap-2 py-4 px-6 rounded-2xl font-bold text-lg transition-all ${
+                                    activeDashboard === type
+                                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
+                                        : 'bg-white text-slate-600 hover:bg-slate-50 shadow-md'
+                                }`}
+                            >
+                                {getDashboardIcon(type)}
+                                {translateDashboardType(type)}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 <div className="space-y-6">
-                    {activities.map(activity => (
-                        <div key={activity.id} className="bg-white rounded-3xl shadow-xl p-6 hover:shadow-2xl transition-all">
-                            <div className="flex items-start gap-4 mb-4">
-                                <img
-                                    src={activity.participant.photoUrl || 'https://i.pravatar.cc/150'}
-                                    alt={`${activity.participant.firstName} ${activity.participant.lastName}`}
-                                    className="w-12 h-12 rounded-full object-cover"
-                                />
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-slate-900">
-                                        {activity.participant.firstName} {activity.participant.lastName}
-                                    </h3>
-                                    <p className="text-sm text-slate-500">
-                                        {new Date(activity.date).toLocaleDateString('ru-RU', {
-                                            day: 'numeric',
-                                            month: 'long',
-                                            year: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })}
-                                    </p>
-                                </div>
-                                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
-                                    {getActivityTypeLabel(activity.activityType)}
-                                </span>
-                            </div>
-
-                            {activity.description && (
-                                <p className="text-slate-700 mb-4">{activity.description}</p>
-                            )}
-
-                            <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-slate-50 rounded-2xl">
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-600">{activity.distance} км</div>
-                                    <div className="text-sm text-slate-500">Дистанция</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-purple-600">{activity.duration} мин</div>
-                                    <div className="text-sm text-slate-500">Время</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-green-600">{activity.points}</div>
-                                    <div className="text-sm text-slate-500">Баллы</div>
-                                </div>
-                            </div>
-
-                            {activity.photoUrls && activity.photoUrls.length > 0 && (
-                                <div className="mb-4 grid grid-cols-2 gap-2">
-                                    {activity.photoUrls.map((url, idx) => (
-                                        <img
-                                            key={idx}
-                                            src={url}
-                                            alt={`Activity photo ${idx + 1}`}
-                                            className="w-full h-64 object-cover rounded-2xl"
-                                        />
-                                    ))}
-                                </div>
-                            )}
-
-                            <div className="flex items-center gap-4 pt-4 border-t border-slate-200">
-                                <button className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                                    <Heart className="w-5 h-5" />
-                                    <span>{activity.reactions.filter(r => r.reactionType === 'LIKE').length}</span>
-                                </button>
-                                <button className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-all">
-                                    <Flame className="w-5 h-5" />
-                                    <span>{activity.reactions.filter(r => r.reactionType === 'FIRE').length}</span>
-                                </button>
-                                <button className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
-                                    <MessageCircle className="w-5 h-5" />
-                                    <span>{activity.comments.length}</span>
-                                </button>
-                            </div>
-                        </div>
+                    {activities.map((activity) => (
+                        <ActivityCard
+                            key={activity.id}
+                            activity={{
+                                ...activity,
+                                teamBasedCompetition: true
+                            }}
+                            onReact={handleReaction}
+                            showSocialFeatures={true}
+                        />
                     ))}
                 </div>
+
+                {activities.length === 0 && (
+                    <div className="text-center py-12 bg-white rounded-3xl shadow-xl">
+                        <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                        <p className="text-slate-500 text-lg">Активностей пока нет</p>
+                    </div>
+                )}
             </div>
         </div>
     );
