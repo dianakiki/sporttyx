@@ -7,6 +7,7 @@ interface Comment {
     activityId: number;
     participantId: number;
     participantName: string;
+    participantAvatarUrl?: string;
     text: string;
     mentionedParticipantId?: number;
     mentionedParticipantName?: string;
@@ -36,17 +37,41 @@ export const CommentItem: React.FC<CommentItemProps> = ({ comment, onDelete, onR
         if (diffMins < 1) return 'только что';
         if (diffMins < 60) return `${diffMins} мин назад`;
         if (diffHours < 24) return `${diffHours} ч назад`;
+        if (diffDays === 1) return 'вчера';
         if (diffDays < 7) return `${diffDays} дн назад`;
         return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    };
+
+    const getAvatarColor = (name: string): string => {
+        const colors = [
+            'from-blue-500 to-blue-600',
+            'from-purple-500 to-purple-600',
+            'from-pink-500 to-pink-600',
+            'from-green-500 to-green-600',
+            'from-orange-500 to-orange-600',
+            'from-red-500 to-red-600',
+            'from-teal-500 to-teal-600',
+            'from-indigo-500 to-indigo-600',
+        ];
+        const index = name.charCodeAt(0) % colors.length;
+        return colors[index];
     };
 
     return (
         <div className="bg-white rounded-lg p-4 space-y-2">
             <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                        {comment.participantName.charAt(0)}
-                    </div>
+                    {comment.participantAvatarUrl ? (
+                        <img
+                            src={comment.participantAvatarUrl}
+                            alt={comment.participantName}
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        />
+                    ) : (
+                        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getAvatarColor(comment.participantName)} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
+                            {comment.participantName.charAt(0).toUpperCase()}
+                        </div>
+                    )}
                     <div>
                         <div className="font-semibold text-slate-900">{comment.participantName}</div>
                         <div className="text-xs text-slate-500">{formatTimeAgo(comment.createdAt)}</div>

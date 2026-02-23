@@ -23,9 +23,18 @@ interface ModerationStats {
     rejectedByMe: number;
 }
 
+interface BonusType {
+    id: number;
+    name: string;
+    description: string;
+    pointsAdjustment: number;
+    type: string;
+}
+
 export const ModerationPanel: React.FC = () => {
     const [activities, setActivities] = useState<ActivityModeration[]>([]);
     const [stats, setStats] = useState<ModerationStats | null>(null);
+    const [bonusTypes, setBonusTypes] = useState<BonusType[]>([]);
     const [filters, setFilters] = useState({
         eventId: null as number | null,
         teamId: null as number | null,
@@ -37,6 +46,12 @@ export const ModerationPanel: React.FC = () => {
         fetchPendingActivities();
         fetchStats();
     }, [filters]);
+
+    useEffect(() => {
+        if (activities.length > 0 && activities[0].eventId) {
+            fetchBonusTypes(activities[0].eventId);
+        }
+    }, [activities]);
 
     const fetchPendingActivities = async () => {
         try {
@@ -79,10 +94,32 @@ export const ModerationPanel: React.FC = () => {
         }
     };
 
-    const handleApprove = async (activityId: number) => {
+    const fetchBonusTypes = async (eventId: number) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/moderation/activities/${activityId}/approve`, {
+            const response = await fetch(`/api/bonus-types?eventId=${eventId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setBonusTypes(data);
+            }
+        } catch (err) {
+            console.error('Error fetching bonus types:', err);
+        }
+    };
+
+    const handleApprove = async (activityId: number, bonusTypeId?: number, comment?: string, penaltyTypeId?: number) => {
+        try {
+            const token = localStorage.getItem('token');
+            const params = new URLSearchParams();
+            if (bonusTypeId) params.append('bonusTypeId', bonusTypeId.toString());
+            if (penaltyTypeId) params.append('penaltyTypeId', penaltyTypeId.toString());
+            if (comment) params.append('comment', comment);
+
+            const url = `/api/moderation/activities/${activityId}/approve${params.toString() ? '?' + params.toString() : ''}`;
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -96,10 +133,14 @@ export const ModerationPanel: React.FC = () => {
         }
     };
 
-    const handleReject = async (activityId: number, reason: string) => {
+    const handleReject = async (activityId: number, reason: string, penaltyTypeId?: number) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/moderation/activities/${activityId}/reject`, {
+            const params = new URLSearchParams();
+            if (penaltyTypeId) params.append('penaltyTypeId', penaltyTypeId.toString());
+
+            const url = `/api/moderation/activities/${activityId}/reject${params.toString() ? '?' + params.toString() : ''}`;
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -181,6 +222,7 @@ export const ModerationPanel: React.FC = () => {
                             <ModerationActivityCard
                                 key={activity.id}
                                 activity={activity}
+                                bonusTypes={bonusTypes}
                                 onApprove={handleApprove}
                                 onReject={handleReject}
                             />

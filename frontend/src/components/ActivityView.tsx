@@ -3,11 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Activity as ActivityIcon, User, Trophy, Calendar, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { ReactionPanel } from './ReactionPanel';
 import { CommentSection } from './CommentSection';
+import { PhotoModal } from './PhotoCarousel';
 
 interface Activity {
     id: number;
     type: string;
     energy: number;
+    finalPoints?: number;
     photoUrls?: string[];
     createdAt: string;
     participantId: number;
@@ -27,6 +29,7 @@ export const ActivityView: React.FC = () => {
     const [activity, setActivity] = useState<Activity | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+    const [showPhotoModal, setShowPhotoModal] = useState(false);
 
     useEffect(() => {
         fetchActivity();
@@ -158,7 +161,10 @@ export const ActivityView: React.FC = () => {
                 <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
                     {/* Activity Photos Carousel */}
                     {hasPhotos ? (
-                        <div className="relative w-full h-96 bg-gradient-to-br from-blue-500 to-blue-600 overflow-hidden group">
+                        <div 
+                            className="relative w-full h-96 bg-gradient-to-br from-blue-500 to-blue-600 overflow-hidden group cursor-pointer"
+                            onClick={() => setShowPhotoModal(true)}
+                        >
                             <img 
                                 src={photos[currentPhotoIndex]} 
                                 alt={`${activity.type} ${currentPhotoIndex + 1}`}
@@ -169,13 +175,19 @@ export const ActivityView: React.FC = () => {
                             {hasMultiplePhotos && (
                                 <>
                                     <button
-                                        onClick={prevPhoto}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            prevPhoto();
+                                        }}
                                         className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
                                         ←
                                     </button>
                                     <button
-                                        onClick={nextPhoto}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            nextPhoto();
+                                        }}
                                         className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
                                         →
@@ -194,7 +206,10 @@ export const ActivityView: React.FC = () => {
                                     {photos.map((photo, index) => (
                                         <button
                                             key={index}
-                                            onClick={() => setCurrentPhotoIndex(index)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCurrentPhotoIndex(index);
+                                            }}
                                             className={`w-16 h-16 rounded-lg overflow-hidden border-2 ${
                                                 index === currentPhotoIndex ? 'border-white' : 'border-transparent opacity-60'
                                             } hover:opacity-100 transition-all`}
@@ -233,7 +248,7 @@ export const ActivityView: React.FC = () => {
                                     <Trophy className="w-8 h-8" />
                                     <div>
                                         <p className="text-sm opacity-90">Энергия</p>
-                                        <p className="text-3xl font-bold">{activity.energy} баллов</p>
+                                        <p className="text-3xl font-bold">{activity.finalPoints ?? activity.energy} баллов</p>
                                     </div>
                                 </div>
                             </div>
@@ -309,6 +324,15 @@ export const ActivityView: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Photo Modal */}
+            {showPhotoModal && photos.length > 0 && (
+                <PhotoModal
+                    photos={photos}
+                    initialIndex={currentPhotoIndex}
+                    onClose={() => setShowPhotoModal(false)}
+                />
+            )}
         </div>
     );
 };

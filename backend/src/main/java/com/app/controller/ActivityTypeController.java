@@ -6,11 +6,13 @@ import com.app.service.ActivityTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/activity-types")
+@CrossOrigin(origins = "http://localhost:3000")
 public class ActivityTypeController {
     
     @Autowired
@@ -61,5 +63,20 @@ public class ActivityTypeController {
     public ResponseEntity<Void> deleteActivityType(@PathVariable Long id) {
         activityTypeService.deleteActivityType(id);
         return ResponseEntity.ok().build();
+    }
+    
+    /**
+     * Импортировать типы активностей из Excel файла
+     */
+    @PostMapping("/import")
+    public ResponseEntity<String> importActivityTypes(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("eventId") Long eventId) {
+        try {
+            int count = activityTypeService.importFromExcel(file, eventId);
+            return ResponseEntity.ok("Успешно импортировано " + count + " типов активностей");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Ошибка при импорте: " + e.getMessage());
+        }
     }
 }

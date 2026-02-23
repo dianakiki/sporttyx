@@ -17,7 +17,7 @@ import { ActivityView } from './components/ActivityView';
 import { ActivityFeed } from './components/ActivityFeed';
 import { AdminPanel } from './components/AdminPanel';
 import { HomePage } from './components/HomePage';
-import { EventDetail } from './components/EventDetail';
+import { EventDetailTabs } from './components/EventDetailTabs';
 import { ModerationPanel } from './components/ModerationPanel';
 import { MainLayout } from './layouts/MainLayout';
 
@@ -168,7 +168,7 @@ function App() {
           element={
             <PrivateRoute>
               <MainLayout>
-                <EventDetail />
+                <EventDetailTabs />
               </MainLayout>
             </PrivateRoute>
           }

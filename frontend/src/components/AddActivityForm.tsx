@@ -31,11 +31,14 @@ export const AddActivityForm: React.FC = () => {
     const [activityTypeSearch, setActivityTypeSearch] = useState('');
     const [showActivityTypeDropdown, setShowActivityTypeDropdown] = useState(false);
     const [energy, setEnergy] = useState('');
+    const [description, setDescription] = useState('');
+    const [durationMinutes, setDurationMinutes] = useState('');
     const [photos, setPhotos] = useState<File[]>([]);
     const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [isTeamBased, setIsTeamBased] = useState(true);
+    const [trackActivityDuration, setTrackActivityDuration] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -85,6 +88,7 @@ export const AddActivityForm: React.FC = () => {
                     if (eventResponse.ok) {
                         const eventData = await eventResponse.json();
                         setIsTeamBased(eventData.teamBasedCompetition !== false);
+                        setTrackActivityDuration(eventData.trackActivityDuration || false);
                     }
                     
                     // Fetch activity types for the user's event
@@ -134,17 +138,44 @@ export const AddActivityForm: React.FC = () => {
     const handlePhotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length > 0) {
-            setPhotos([...photos, ...files]);
+            // Validate file formats
+            const allowedFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            const invalidFiles = files.filter(file => !allowedFormats.includes(file.type));
+            
+            if (invalidFiles.length > 0) {
+                const invalidNames = invalidFiles.map(f => f.name).join(', ');
+                setError(`Неподдерживаемый формат файла: ${invalidNames}. Разрешены только JPG, PNG и GIF.`);
+                e.target.value = '';
+                return;
+            }
+            
+            const remainingSlots = 10 - photos.length;
+            if (remainingSlots <= 0) {
+                setError('Максимум 10 фотографий');
+                e.target.value = '';
+                return;
+            }
+            
+            const filesToAdd = files.slice(0, remainingSlots);
+            if (files.length > remainingSlots) {
+                setError(`Добавлено ${filesToAdd.length} из ${files.length} фото. Максимум 10 фотографий.`);
+            }
+            
+            setPhotos([...photos, ...filesToAdd]);
             
             // Create previews for new files
-            files.forEach(file => {
+            filesToAdd.forEach(file => {
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     setPhotoPreviews(prev => [...prev, reader.result as string]);
                 };
+                reader.onerror = () => {
+                    console.error('Error reading file:', file.name);
+                };
                 reader.readAsDataURL(file);
             });
         }
+        e.target.value = '';
     };
 
     const removePhoto = (index: number) => {
@@ -200,6 +231,12 @@ export const AddActivityForm: React.FC = () => {
             }
         }
 
+        // Validate photo count
+        if (photos.length > 10) {
+            setError('Максимум 10 фотографий');
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -214,6 +251,10 @@ export const AddActivityForm: React.FC = () => {
                 // Use current user as the one who logged the activity
                 formData.append('teamId', selectedTeamId);
                 formData.append('participantId', userId || '');
+                // Add all selected participants
+                selectedParticipantIds.forEach(id => {
+                    formData.append('participantIds', id.toString());
+                });
             } else {
                 // For individual events: create activity for current user only
                 formData.append('teamId', selectedTeamId || '0'); // Some default if no team
@@ -222,9 +263,17 @@ export const AddActivityForm: React.FC = () => {
             
             formData.append('type', activityType?.name || '');
             formData.append('energy', energy);
+            if (description) {
+                formData.append('description', description);
+            }
+            if (trackActivityDuration && durationMinutes) {
+                formData.append('durationMinutes', durationMinutes);
+            }
             
+            // Create new File objects to avoid ERR_UPLOAD_FILE_CHANGED
             photos.forEach((photo) => {
-                formData.append('photos', photo);
+                const newFile = new File([photo], photo.name, { type: photo.type });
+                formData.append('photos', newFile);
             });
 
             const response = await fetch('/api/activities', {
@@ -337,6 +386,35 @@ export const AddActivityForm: React.FC = () => {
                                 <p className="text-2xl font-bold text-blue-600">{energy} баллов</p>
                             </div>
                         )}
+
+                        {trackActivityDuration && (
+                            <div className="mb-6">
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                    Время активности (минуты)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={durationMinutes}
+                                    onChange={(e) => setDurationMinutes(e.target.value)}
+                                    placeholder="Например: 30"
+                                    min="1"
+                                    className="w-full px-5 py-4 rounded-xl bg-white border-2 border-slate-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 shadow-sm hover:border-slate-300"
+                                />
+                            </div>
+                        )}
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                Описание активности (необязательно)
+                            </label>
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Расскажите о своей активности..."
+                                rows={3}
+                                className="w-full px-5 py-4 rounded-xl bg-white border-2 border-slate-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 shadow-sm hover:border-slate-300 resize-none"
+                            />
+                        </div>
 
                         <div className="mb-6">
                             <label className="block text-sm font-semibold text-slate-700 mb-2">

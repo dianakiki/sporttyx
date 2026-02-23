@@ -36,6 +36,7 @@ public class EventResponse {
     private List<String> dashboardTypes;
     private List<String> dashboardOrder;
     private Boolean teamBasedCompetition;
+    private Boolean trackActivityDuration;
     private Set<EventAdminDto> eventAdmins;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

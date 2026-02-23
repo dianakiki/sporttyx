@@ -24,4 +24,6 @@ public class ActivityModerationResponse {
     private List<String> photoUrls;
     private ActivityStatus status;
     private LocalDateTime createdAt;
+    private List<ParticipantSimpleDto> participants;
+    private Integer totalTeamParticipants;
 }

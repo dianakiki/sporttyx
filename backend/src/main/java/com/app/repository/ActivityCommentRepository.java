@@ -10,7 +10,7 @@ import java.util.List;
 
 @Repository
 public interface ActivityCommentRepository extends JpaRepository<ActivityComment, Long> {
-    List<ActivityComment> findByActivityIdOrderByCreatedAtDesc(Long activityId);
+    List<ActivityComment> findByActivityIdOrderByCreatedAtAsc(Long activityId);
     
     @Query("SELECT COUNT(c) FROM ActivityComment c WHERE c.activity.id = :activityId")
     Long countByActivityId(@Param("activityId") Long activityId);

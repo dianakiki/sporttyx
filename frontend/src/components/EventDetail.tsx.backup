@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, Edit, Upload, FileSpreadsheet, X, Save, Users, Activity as ActivityIcon } from 'lucide-react';
+import { Calendar, Edit, Upload, FileSpreadsheet, X, Save, Users, Activity as ActivityIcon, Settings, Gift, UserCheck } from 'lucide-react';
 import axiosInstance from '../api/axiosConfig';
 import * as XLSX from 'xlsx';
 import { translateDashboardType } from '../utils/translations';
+import { BonusManagement } from './BonusManagement';
 
 interface EventDetail {
     id: number;
@@ -50,12 +51,14 @@ export const EventDetail: React.FC = () => {
     const [event, setEvent] = useState<EventDetail | null>(null);
     const [teams, setTeams] = useState<Team[]>([]);
     const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
+    const [activeTab, setActiveTab] = useState<'settings' | 'activities' | 'bonuses' | 'participants'>('settings');
     const [isEditing, setIsEditing] = useState(false);
     const [showExcelUpload, setShowExcelUpload] = useState(false);
     const [loading, setLoading] = useState(true);
     const [editForm, setEditForm] = useState<Partial<EventDetail>>({});
     const [uploadStatus, setUploadStatus] = useState<{ show: boolean; success: boolean; message: string }>({ show: false, success: false, message: '' });
     const [draggedDashboardIndex, setDraggedDashboardIndex] = useState<number | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         if (eventId) {
@@ -302,6 +305,60 @@ export const EventDetail: React.FC = () => {
                         </button>
                     </div>
 
+                    {/* Tabs Navigation */}
+                    <div className="flex gap-2 border-b border-slate-200 mt-6">
+                        <button
+                            onClick={() => setActiveTab('settings')}
+                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
+                                activeTab === 'settings'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-slate-600 hover:text-blue-600'
+                            }`}
+                        >
+                            <Settings className="w-5 h-5" />
+                            Настройки
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('activities')}
+                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
+                                activeTab === 'activities'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-slate-600 hover:text-blue-600'
+                            }`}
+                        >
+                            <ActivityIcon className="w-5 h-5" />
+                            Типы активностей
+                        </button>
+                        {event.requiresActivityApproval && (
+                            <button
+                                onClick={() => setActiveTab('bonuses')}
+                                className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
+                                    activeTab === 'bonuses'
+                                        ? 'text-blue-600 border-b-2 border-blue-600'
+                                        : 'text-slate-600 hover:text-blue-600'
+                                }`}
+                            >
+                                <Gift className="w-5 h-5" />
+                                Бонусы и штрафы
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setActiveTab('participants')}
+                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
+                                activeTab === 'participants'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-slate-600 hover:text-blue-600'
+                            }`}
+                        >
+                            <UserCheck className="w-5 h-5" />
+                            {event.teamBasedCompetition ? 'Команды' : 'Участники'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Settings Tab */}
+                {activeTab === 'settings' && (
+                    <div className="bg-white rounded-3xl shadow-xl p-8">
                     {isEditing && (
                         <div className="space-y-4 mt-6 pt-6 border-t border-slate-200">
                             <div className="grid grid-cols-2 gap-4">
@@ -394,6 +451,19 @@ export const EventDetail: React.FC = () => {
                                     <span className="text-xs text-slate-500">(если выключено - индивидуальное)</span>
                                 </label>
                             </div>
+
+                            <div>
+                                <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-slate-200 rounded-lg hover:border-orange-300 transition-all">
+                                    <input
+                                        type="checkbox"
+                                        checked={editForm.requiresActivityApproval || false}
+                                        onChange={(e) => setEditForm({ ...editForm, requiresActivityApproval: e.target.checked })}
+                                        className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
+                                    />
+                                    <span className="text-sm font-semibold text-slate-700">Модерация активностей</span>
+                                    <span className="text-xs text-slate-500">(активности требуют одобрения модератором)</span>
+                                </label>
+                            </div>
                         </div>
                     )}
 
@@ -476,10 +546,33 @@ export const EventDetail: React.FC = () => {
                             ))
                         )}
                     </div>
-                </div>
+                    </div>
+                )}
 
-                {/* Excel Upload Modal */}
-                {showExcelUpload && (
+                {/* Bonuses Tab */}
+                {activeTab === 'bonuses' && event && event.requiresActivityApproval && (
+                    <BonusManagement eventId={Number(eventId)} />
+                )}
+
+                {/* Participants/Teams Tab */}
+                {activeTab === 'participants' && (
+                    <div className="bg-white rounded-3xl shadow-xl p-8">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                                <Users className="w-7 h-7 text-blue-600" />
+                                {event.teamBasedCompetition ? `Команды (${teams.length})` : 'Участники'}
+                            </h2>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder={event.teamBasedCompetition ? 'Поиск команды...' : 'Поиск участника...'}
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="px-4 py-2 pl-10 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none w-64"
+                                />
+                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            </div>
+                        </div>
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
                         <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-8">
                             <div className="flex items-center justify-between mb-6">
@@ -531,7 +624,8 @@ export const EventDetail: React.FC = () => {
                     </div>
                 )}
 
-                {/* Upload Status Notification */}
+                {/* Excel Upload Modal */}
+                {showExcelUpload && (
                 {uploadStatus.show && (
                     <div className="fixed bottom-6 right-6 z-50 animate-slide-up">
                         <div className={`rounded-2xl shadow-2xl p-6 max-w-md ${

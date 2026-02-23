@@ -90,7 +90,7 @@ public class ActivityCommentService {
     }
     
     public List<CommentResponse> getActivityComments(Long activityId, Long currentUserId) {
-        List<ActivityComment> comments = activityCommentRepository.findByActivityIdOrderByCreatedAtDesc(activityId);
+        List<ActivityComment> comments = activityCommentRepository.findByActivityIdOrderByCreatedAtAsc(activityId);
         
         return comments.stream()
                 .map(comment -> toCommentResponse(comment, currentUserId))
@@ -150,6 +150,7 @@ public class ActivityCommentService {
                 comment.getActivity().getId(),
                 comment.getParticipant().getId(),
                 comment.getParticipant().getName(),
+                comment.getParticipant().getProfileImageUrl(),
                 comment.getText(),
                 comment.getMentionedParticipant() != null ? comment.getMentionedParticipant().getId() : null,
                 comment.getMentionedParticipant() != null ? comment.getMentionedParticipant().getName() : null,

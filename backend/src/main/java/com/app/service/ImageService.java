@@ -46,7 +46,15 @@ public class ImageService {
             Files.createDirectories(uploadPath);
         }
         
-        BufferedImage originalImage = ImageIO.read(file.getInputStream());
+        BufferedImage originalImage;
+        try {
+            byte[] bytes = file.getBytes();
+            ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+            originalImage = ImageIO.read(bais);
+        } catch (Exception e) {
+            throw new IOException("Failed to read image file: " + file.getOriginalFilename(), e);
+        }
+        
         if (originalImage == null) {
             throw new IOException("Invalid image file: " + file.getOriginalFilename());
         }

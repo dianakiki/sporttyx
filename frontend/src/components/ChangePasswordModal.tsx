@@ -40,10 +40,12 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ userId
             
             onSuccess();
         } catch (err: any) {
-            if (err.response?.status === 400) {
+            if (err.response?.data?.message) {
+                setError(err.response.data.message);
+            } else if (err.response?.status === 400) {
                 setError('Неверный текущий пароль');
             } else {
-                setError('Ошибка при смене пароля');
+                setError('Ошибка при смене пароля. Попробуйте еще раз.');
             }
         } finally {
             setIsLoading(false);

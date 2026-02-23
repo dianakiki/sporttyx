@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Trophy, Calendar, UserPlus, LogOut, Edit } from 'lucide-react';
+import { Users, Plus, Trophy, Calendar, UserPlus, Edit } from 'lucide-react';
 import { Button } from './ui/Button';
 import { ActivityHeatmap } from './ActivityHeatmap';
+import { ActivityCard } from './ActivityCard';
 
 interface Participant {
     id: number;
@@ -265,48 +266,13 @@ export const MyTeam: React.FC = () => {
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-4">
                             {activities.map((activity) => (
-                                <div
+                                <ActivityCard
                                     key={activity.id}
-                                    onClick={() => navigate(`/activity/${activity.id}`)}
-                                    className="bg-white rounded-2xl border-2 border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all overflow-hidden cursor-pointer"
-                                >
-                                    {/* Activity Photo */}
-                                    {(activity.photoUrls && activity.photoUrls.length > 0) || activity.photoUrl ? (
-                                        <div className="w-full h-48 overflow-hidden bg-slate-100">
-                                            <img 
-                                                src={(activity.photoUrls && activity.photoUrls.length > 0) ? activity.photoUrls[0] : activity.photoUrl} 
-                                                alt={activity.type}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-sky-100 flex items-center justify-center">
-                                            <Calendar className="w-16 h-16 text-blue-300" />
-                                        </div>
-                                    )}
-                                    
-                                    {/* Activity Info */}
-                                    <div className="p-5">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div>
-                                                <h3 className="text-lg font-bold text-slate-900">{activity.type}</h3>
-                                                <p className="text-sm text-slate-600">{activity.participantName}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-2xl font-bold text-blue-600">
-                                                    {activity.energy}
-                                                </div>
-                                                <div className="text-xs text-slate-500">баллов</div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                                            <Calendar className="w-4 h-4" />
-                                            {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Дата не указана'}
-                                        </div>
-                                    </div>
-                                </div>
+                                    activity={activity}
+                                    showSocialFeatures={false}
+                                />
                             ))}
                         </div>
 

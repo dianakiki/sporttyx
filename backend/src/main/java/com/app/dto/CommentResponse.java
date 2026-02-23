@@ -15,6 +15,7 @@ public class CommentResponse {
     private Long activityId;
     private Long participantId;
     private String participantName;
+    private String participantAvatarUrl;
     private String text;
     private Long mentionedParticipantId;
     private String mentionedParticipantName;

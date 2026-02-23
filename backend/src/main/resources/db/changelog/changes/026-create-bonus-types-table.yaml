@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-create-bonus-types-table
+      author: diana
+      changes:
+        - createTable:
+            tableName: bonus_types
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: event_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_bonus_types_event
+                    references: events(id)
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: points_adjustment
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+                  remarks: "Positive for bonuses, negative for penalties"
+              - column:
+                  name: type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+                  remarks: "BONUS or PENALTY"
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false

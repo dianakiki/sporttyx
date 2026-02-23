@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 037-make-bug-number-nullable
+      author: system
+      changes:
+        - dropNotNullConstraint:
+            tableName: bug_reports
+            columnName: bug_number
+            columnDataType: varchar(20)

@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 034-add-team-based-competition-to-events
+      author: system
+      changes:
+        - addColumn:
+            tableName: events
+            columns:
+              - column:
+                  name: team_based_competition
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

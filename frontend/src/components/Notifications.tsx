@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Users, Check, X } from 'lucide-react';
+import { Bell, Users, Check, X, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/Button';
 
 interface TeamInvitation {
@@ -10,12 +11,26 @@ interface TeamInvitation {
     invitedAt: string;
 }
 
+interface Notification {
+    id: number;
+    type: string;
+    title: string;
+    message: string;
+    isRead: boolean;
+    createdAt: string;
+    activityId?: number;
+    activityType?: string;
+}
+
 export const Notifications: React.FC = () => {
     const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchInvitations();
+        fetchNotifications();
     }, []);
 
     const fetchInvitations = async () => {
@@ -35,6 +50,25 @@ export const Notifications: React.FC = () => {
             }
         } catch (err) {
             console.error('Error fetching invitations:', err);
+        }
+    };
+
+    const fetchNotifications = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            
+            const response = await fetch('/api/notifications', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setNotifications(data);
+            }
+        } catch (err) {
+            console.error('Error fetching notifications:', err);
         } finally {
             setIsLoading(false);
         }
@@ -71,11 +105,57 @@ export const Notifications: React.FC = () => {
             });
 
             if (response.ok) {
-                // Remove invitation from list
                 setInvitations(invitations.filter(inv => inv.id !== invitationId));
             }
         } catch (err) {
             console.error('Error declining invitation:', err);
+        }
+    };
+
+    const handleMarkAsRead = async (notificationId: number) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/notifications/${notificationId}/read`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.ok) {
+                setNotifications(notifications.map(n => 
+                    n.id === notificationId ? { ...n, isRead: true } : n
+                ));
+            }
+        } catch (err) {
+            console.error('Error marking notification as read:', err);
+        }
+    };
+
+    const handleDeleteNotification = async (notificationId: number) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/notifications/${notificationId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.ok) {
+                setNotifications(notifications.filter(n => n.id !== notificationId));
+            }
+        } catch (err) {
+            console.error('Error deleting notification:', err);
+        }
+    };
+
+    const handleNotificationClick = (notification: Notification) => {
+        if (!notification.isRead) {
+            handleMarkAsRead(notification.id);
+        }
+        if (notification.activityId) {
+            navigate(`/activity/${notification.activityId}`);
         }
     };
 
@@ -91,23 +171,92 @@ export const Notifications: React.FC = () => {
         );
     }
 
+    const totalUnread = invitations.length + notifications.filter(n => !n.isRead).length;
+    const hasAnyNotifications = invitations.length > 0 || notifications.length > 0;
+
     return (
         <div className="bg-white rounded-2xl shadow-lg p-6">
             <div className="flex items-center gap-2 mb-4">
                 <Bell className="w-6 h-6 text-blue-600" />
                 <h2 className="text-2xl font-bold text-slate-900">Уведомления</h2>
-                {invitations.length > 0 && (
+                {totalUnread > 0 && (
                     <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
-                        {invitations.length}
+                        {totalUnread}
                     </span>
                 )}
             </div>
 
-            {invitations.length > 0 ? (
+            {hasAnyNotifications ? (
                 <div className="space-y-4">
+                    {/* Activity Moderation Notifications */}
+                    {notifications.map((notification) => {
+                        const isApproved = notification.type === 'ACTIVITY_APPROVED';
+                        const isRejected = notification.type === 'ACTIVITY_REJECTED';
+                        
+                        return (
+                            <div
+                                key={`notif-${notification.id}`}
+                                className={`p-4 border-2 rounded-xl transition-all ${
+                                    notification.isRead 
+                                        ? 'bg-slate-50 border-slate-200' 
+                                        : isApproved 
+                                            ? 'bg-green-50 border-green-200' 
+                                            : 'bg-red-50 border-red-200'
+                                } ${
+                                    notification.activityId ? 'cursor-pointer hover:shadow-md' : ''
+                                }`}
+                                onClick={() => notification.activityId && handleNotificationClick(notification)}
+                            >
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            {isApproved ? (
+                                                <CheckCircle className="w-5 h-5 text-green-600" />
+                                            ) : isRejected ? (
+                                                <XCircle className="w-5 h-5 text-red-600" />
+                                            ) : (
+                                                <Bell className="w-5 h-5 text-blue-600" />
+                                            )}
+                                            <h3 className="font-bold text-slate-900">
+                                                {notification.title}
+                                            </h3>
+                                            {!notification.isRead && (
+                                                <span className="px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">
+                                                    Новое
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-slate-700 mb-1 whitespace-pre-line">
+                                            {notification.message}
+                                        </p>
+                                        <p className="text-sm text-slate-500">
+                                            {new Date(notification.createdAt).toLocaleDateString('ru-RU', {
+                                                day: 'numeric',
+                                                month: 'long',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteNotification(notification.id);
+                                        }}
+                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                        title="Удалить"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* Team Invitations */}
                     {invitations.map((invitation) => (
                         <div
-                            key={invitation.id}
+                            key={`inv-${invitation.id}`}
                             className="p-4 bg-blue-50 border-2 border-blue-100 rounded-xl hover:border-blue-200 transition-all"
                         >
                             <div className="flex items-start justify-between gap-4">

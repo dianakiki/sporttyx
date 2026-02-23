@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Trophy, User, Heart, MessageCircle, Share2, TrendingUp, Activity as ActivityIcon, List } from 'lucide-react';
+import { Calendar, Trophy, TrendingUp, Activity as ActivityIcon, List } from 'lucide-react';
 import { translateDashboardType } from '../utils/translations';
-import { ReactionPanel } from './ReactionPanel';
+import { ActivityCard } from './ActivityCard';
 
 interface Activity {
     id: number;
@@ -22,25 +22,50 @@ interface ActivityFeedProps {
     dashboardTypes?: string[];
     activeDashboard?: string;
     setActiveDashboard?: (dashboard: string) => void;
+    eventId?: number;
 }
 
 export const ActivityFeed: React.FC<ActivityFeedProps> = ({ 
     dashboardTypes = [], 
     activeDashboard = 'FEED',
-    setActiveDashboard 
+    setActiveDashboard,
+    eventId
 }) => {
     const [activities, setActivities] = useState<Activity[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
-        fetchActivities();
-    }, []);
+        fetchActivities(0, true);
+    }, [eventId]);
 
-    const fetchActivities = async () => {
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100) {
+                if (!isLoadingMore && hasMore) {
+                    loadMoreActivities();
+                }
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [isLoadingMore, hasMore, page]);
+
+    const fetchActivities = async (pageNum: number, reset: boolean = false) => {
         try {
+            if (reset) {
+                setIsLoading(true);
+            } else {
+                setIsLoadingMore(true);
+            }
+            
             const token = localStorage.getItem('token');
-            const response = await fetch('/api/activities/all', {
+            const eventParam = eventId ? `&eventId=${eventId}` : '';
+            const response = await fetch(`/api/activities/all?page=${pageNum}&size=10${eventParam}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 },
@@ -48,13 +73,24 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
             if (response.ok) {
                 const data = await response.json();
-                setActivities(data);
+                if (reset) {
+                    setActivities(data);
+                } else {
+                    setActivities(prev => [...prev, ...data]);
+                }
+                setHasMore(data.length === 10);
+                setPage(pageNum);
             }
         } catch (err) {
             console.error('Error fetching activities:', err);
         } finally {
             setIsLoading(false);
+            setIsLoadingMore(false);
         }
+    };
+
+    const loadMoreActivities = () => {
+        fetchActivities(page + 1, false);
     };
 
     const handleReaction = async (activityId: number, reactionType: string) => {
@@ -69,6 +105,26 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                         'Authorization': `Bearer ${token}`,
                     },
                 });
+                
+                // Update local state without reloading
+                setActivities(prev => prev.map(a => {
+                    if (a.id === activityId) {
+                        const newReactionCounts = { ...a.reactionCounts };
+                        if (newReactionCounts[reactionType]) {
+                            newReactionCounts[reactionType]--;
+                            if (newReactionCounts[reactionType] === 0) {
+                                delete newReactionCounts[reactionType];
+                            }
+                        }
+                        return {
+                            ...a,
+                            userReaction: undefined,
+                            reactionCounts: newReactionCounts,
+                            totalReactions: (a.totalReactions || 0) - 1
+                        };
+                    }
+                    return a;
+                }));
             } else {
                 await fetch(`/api/activities/${activityId}/reactions`, {
                     method: 'POST',
@@ -78,44 +134,38 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                     },
                     body: JSON.stringify({ reactionType }),
                 });
+                
+                // Update local state without reloading
+                setActivities(prev => prev.map(a => {
+                    if (a.id === activityId) {
+                        const newReactionCounts = { ...a.reactionCounts };
+                        
+                        // Remove old reaction if exists
+                        if (a.userReaction && newReactionCounts[a.userReaction]) {
+                            newReactionCounts[a.userReaction]--;
+                            if (newReactionCounts[a.userReaction] === 0) {
+                                delete newReactionCounts[a.userReaction];
+                            }
+                        }
+                        
+                        // Add new reaction
+                        newReactionCounts[reactionType] = (newReactionCounts[reactionType] || 0) + 1;
+                        
+                        return {
+                            ...a,
+                            userReaction: reactionType,
+                            reactionCounts: newReactionCounts,
+                            totalReactions: a.userReaction ? a.totalReactions : (a.totalReactions || 0) + 1
+                        };
+                    }
+                    return a;
+                }));
             }
-            
-            fetchActivities();
         } catch (err) {
             console.error('Error reacting to activity:', err);
         }
     };
 
-    const formatTimeAgo = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return 'только что';
-        if (diffMins < 60) return `${diffMins} мин назад`;
-        if (diffHours < 24) return `${diffHours} ч назад`;
-        if (diffDays < 7) return `${diffDays} дн назад`;
-        return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-    };
-
-    const getActivityEmoji = (type: string) => {
-        const emojiMap: { [key: string]: string } = {
-            'Бег': '🏃',
-            'Плавание': '🏊',
-            'Велосипед': '🚴',
-            'Йога': '🧘',
-            'Футбол': '⚽',
-            'Баскетбол': '🏀',
-            'Теннис': '🎾',
-            'Волейбол': '🏐',
-            'Тренажерный зал': '💪',
-            'Танцы': '💃',
-        };
-        return emojiMap[type] || '🏃';
-    };
 
     const getDashboardIcon = (type: string) => {
         switch (type) {
@@ -169,30 +219,6 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                     </div>
                 )}
 
-                {/* Stats Bar */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                    <div className="flex items-center justify-around">
-                        <div className="text-center">
-                            <div className="text-3xl font-bold text-blue-600">{activities.length}</div>
-                            <div className="text-sm text-slate-600">Активностей</div>
-                        </div>
-                        <div className="w-px h-12 bg-slate-200"></div>
-                        <div className="text-center">
-                            <div className="text-3xl font-bold text-green-600">
-                                {activities.reduce((sum, a) => sum + a.energy, 0)}
-                            </div>
-                            <div className="text-sm text-slate-600">Всего баллов</div>
-                        </div>
-                        <div className="w-px h-12 bg-slate-200"></div>
-                        <div className="text-center">
-                            <div className="text-3xl font-bold text-purple-600">
-                                {new Set(activities.map(a => a.participantName)).size}
-                            </div>
-                            <div className="text-sm text-slate-600">Участников</div>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Activity Feed */}
                 <div className="space-y-4">
                     {activities.length === 0 ? (
@@ -203,102 +229,18 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                         </div>
                     ) : (
                         activities.map((activity) => (
-                            <div
+                            <ActivityCard
                                 key={activity.id}
-                                onClick={() => navigate(`/activity/${activity.id}`)}
-                                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer transform hover:-translate-y-1"
-                            >
-                                {/* Post Header */}
-                                <div className="p-4 flex items-center justify-between border-b border-slate-100">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                                            {activity.participantName.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-slate-900">{activity.participantName}</div>
-                                            <div className="text-sm text-slate-500 flex items-center gap-2">
-                                                <span className="text-lg">{getActivityEmoji(activity.type)}</span>
-                                                {activity.type}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="text-sm text-slate-400">
-                                        {formatTimeAgo(activity.createdAt)}
-                                    </div>
-                                </div>
-
-                                {/* Post Image */}
-                                {(activity.photoUrls && activity.photoUrls.length > 0) || activity.photoUrl ? (
-                                    <div className="relative">
-                                        <img
-                                            src={(activity.photoUrls && activity.photoUrls.length > 0) ? activity.photoUrls[0] : activity.photoUrl}
-                                            alt={activity.type}
-                                            className="w-full h-96 object-cover"
-                                        />
-                                        {/* Photo count indicator */}
-                                        {activity.photoUrls && activity.photoUrls.length > 1 && (
-                                            <div className="absolute top-4 left-4 bg-black bg-opacity-60 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                                📷 {activity.photoUrls.length}
-                                            </div>
-                                        )}
-                                        {/* Energy Badge on Image */}
-                                        <div className="absolute top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2">
-                                            <Trophy className="w-5 h-5" />
-                                            <span className="font-bold text-lg">{activity.energy}</span>
-                                            <span className="text-sm">баллов</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="relative h-64 bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 flex items-center justify-center">
-                                        <div className="text-center">
-                                            <div className="text-8xl mb-4">{getActivityEmoji(activity.type)}</div>
-                                            <div className="text-2xl font-bold text-slate-700">{activity.type}</div>
-                                        </div>
-                                        {/* Energy Badge */}
-                                        <div className="absolute top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2">
-                                            <Trophy className="w-5 h-5" />
-                                            <span className="font-bold text-lg">{activity.energy}</span>
-                                            <span className="text-sm">баллов</span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Post Footer */}
-                                <div className="p-4 space-y-3">
-                                    {/* Reaction counts summary */}
-                                    {((activity.totalReactions && activity.totalReactions > 0) || (activity.commentCount && activity.commentCount > 0)) && (
-                                        <div className="flex items-center gap-4 text-sm text-slate-600 pb-2 border-b border-slate-100">
-                                            {activity.totalReactions && activity.totalReactions > 0 && (
-                                                <span>{activity.totalReactions} реакций</span>
-                                            )}
-                                            {activity.commentCount && activity.commentCount > 0 && (
-                                                <span>{activity.commentCount} комментариев</span>
-                                            )}
-                                        </div>
-                                    )}
-                                    
-                                    {/* Reaction Panel */}
-                                    <ReactionPanel
-                                        activityId={activity.id}
-                                        reactionCounts={activity.reactionCounts}
-                                        userReaction={activity.userReaction}
-                                        onReact={(type) => handleReaction(activity.id, type)}
-                                    />
-                                    
-                                    {/* Comment button */}
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            navigate(`/activity/${activity.id}`);
-                                        }}
-                                        className="flex items-center gap-2 text-slate-600 hover:text-blue-500 transition-colors w-full justify-center py-2 border-t border-slate-100"
-                                    >
-                                        <MessageCircle className="w-5 h-5" />
-                                        <span className="text-sm font-medium">Комментировать</span>
-                                    </button>
-                                </div>
-                            </div>
+                                activity={activity}
+                                onReact={handleReaction}
+                                showSocialFeatures={true}
+                            />
                         ))
+                    )}
+                    {isLoadingMore && (
+                        <div className="text-center py-8">
+                            <div className="text-blue-600">Загрузка...</div>
+                        </div>
                     )}
                 </div>
 

@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 033-add-bug-number-to-bug-reports
+      author: system
+      changes:
+        - addColumn:
+            tableName: bug_reports
+            columns:
+              - column:
+                  name: bug_number
+                  type: varchar(20)
+                  constraints:
+                    nullable: true
+        - sql:
+            sql: "UPDATE bug_reports SET bug_number = CONCAT('BUG-', LPAD(CAST(id AS TEXT), 6, '0')) WHERE bug_number IS NULL"
+        - addNotNullConstraint:
+            tableName: bug_reports
+            columnName: bug_number
+            columnDataType: varchar(20)
+        - addUniqueConstraint:
+            tableName: bug_reports
+            columnNames: bug_number
+            constraintName: uk_bug_reports_bug_number

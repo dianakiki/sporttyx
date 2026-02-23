@@ -92,6 +92,9 @@ public class Event {
     @Column(name = "team_based_competition", nullable = false)
     private Boolean teamBasedCompetition = true;
     
+    @Column(name = "track_activity_duration", nullable = false)
+    private Boolean trackActivityDuration = false;
+    
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "event_admins",

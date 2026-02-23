@@ -108,6 +108,7 @@ export const HomePage: React.FC = () => {
                     dashboardTypes={orderedDashboards} 
                     activeDashboard={activeDashboard}
                     setActiveDashboard={setActiveDashboard}
+                    eventId={displayedEvent.id}
                 />;
             case 'SIMPLE_LIST':
                 return <SimpleList 

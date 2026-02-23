@@ -1,6 +1,7 @@
 package com.app.controller;
 
 import com.app.dto.ChangePasswordRequest;
+import com.app.dto.EventResponse;
 import com.app.dto.ParticipantRankingResponse;
 import com.app.dto.ParticipantResponse;
 import com.app.dto.ParticipantSearchResponse;
@@ -79,5 +80,14 @@ public class ParticipantController {
             @RequestParam Long eventId) {
         List<ParticipantRankingResponse> rankings = participantService.getParticipantRankings(eventId);
         return ResponseEntity.ok(rankings);
+    }
+    
+    /**
+     * Получить все события, в которых участвует пользователь
+     */
+    @GetMapping("/{id}/events")
+    public ResponseEntity<List<EventResponse>> getParticipantEvents(@PathVariable Long id) {
+        List<EventResponse> events = participantService.getParticipantEvents(id);
+        return ResponseEntity.ok(events);
     }
 }

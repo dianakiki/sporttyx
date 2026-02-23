@@ -27,4 +27,16 @@ public interface ActivityRepository extends JpaRepository<Activity, Long>, JpaSp
     
     @Query("SELECT SUM(a.energy) FROM Activity a WHERE a.team.id = :teamId AND a.status IN :statuses")
     Integer sumEnergyByTeamIdAndStatusIn(@Param("teamId") Long teamId, @Param("statuses") List<ActivityStatus> statuses);
+    
+    @Query("SELECT DISTINCT a FROM Activity a LEFT JOIN FETCH a.adjustments adj LEFT JOIN FETCH adj.bonusType WHERE a.id = :id")
+    Activity findByIdWithAdjustments(@Param("id") Long id);
+    
+    @Query("SELECT DISTINCT a FROM Activity a LEFT JOIN FETCH a.adjustments adj LEFT JOIN FETCH adj.bonusType WHERE a.status IN :statuses ORDER BY a.createdAt DESC")
+    List<Activity> findAllWithAdjustmentsByStatusIn(@Param("statuses") List<ActivityStatus> statuses);
+    
+    @Query("SELECT DISTINCT a FROM Activity a LEFT JOIN FETCH a.adjustments adj LEFT JOIN FETCH adj.bonusType WHERE a.team.id = :teamId AND a.status IN :statuses ORDER BY a.createdAt DESC")
+    List<Activity> findByTeamIdWithAdjustments(@Param("teamId") Long teamId, @Param("statuses") List<ActivityStatus> statuses);
+    
+    @Query("SELECT DISTINCT a FROM Activity a LEFT JOIN FETCH a.adjustments adj LEFT JOIN FETCH adj.bonusType WHERE a.team.event.id = :eventId AND a.status IN :statuses ORDER BY a.createdAt DESC")
+    List<Activity> findByEventIdWithAdjustments(@Param("eventId") Long eventId, @Param("statuses") List<ActivityStatus> statuses);
 }

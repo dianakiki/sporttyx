@@ -1,10 +1,17 @@
 package com.app.service;
 
 import com.app.dto.ActivityModerationResponse;
+import com.app.dto.BonusTypeResponse;
 import com.app.dto.ModerationStatsResponse;
+import com.app.dto.ParticipantSimpleDto;
 import com.app.model.*;
+import com.app.repository.ActivityAdjustmentRepository;
+import com.app.repository.ActivityParticipantRepository;
 import com.app.repository.ActivityRepository;
+import com.app.repository.BonusTypeRepository;
+import com.app.repository.EventRepository;
 import com.app.repository.ParticipantRepository;
+import com.app.repository.TeamParticipantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +34,24 @@ public class ModerationService {
     
     @Autowired
     private ParticipantRepository participantRepository;
+    
+    @Autowired
+    private EventRepository eventRepository;
+    
+    @Autowired
+    private BonusTypeRepository bonusTypeRepository;
+    
+    @Autowired
+    private ActivityAdjustmentRepository activityAdjustmentRepository;
+    
+    @Autowired
+    private ActivityParticipantRepository activityParticipantRepository;
+    
+    @Autowired
+    private TeamParticipantRepository teamParticipantRepository;
+    
+    @Autowired
+    private NotificationService notificationService;
     
     public List<ActivityModerationResponse> getPendingActivities(
             Long eventId, 
@@ -57,6 +82,16 @@ public class ModerationService {
     
     @Transactional
     public void approveActivity(Long activityId, Long moderatorId) {
+        approveActivityWithBonus(activityId, moderatorId, null, null);
+    }
+    
+    @Transactional
+    public void approveActivityWithBonus(Long activityId, Long moderatorId, Long bonusTypeId, String comment) {
+        approveActivityWithAdjustment(activityId, moderatorId, bonusTypeId, null, comment);
+    }
+    
+    @Transactional
+    public void approveActivityWithAdjustment(Long activityId, Long moderatorId, Long bonusTypeId, Long penaltyTypeId, String comment) {
         Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
         
@@ -77,10 +112,51 @@ public class ModerationService {
         activity.setRejectionReason(null);
         
         activityRepository.save(activity);
+        
+        // Apply bonus if specified
+        BonusType bonusType = null;
+        if (bonusTypeId != null) {
+            bonusType = bonusTypeRepository.findById(bonusTypeId)
+                    .orElseThrow(() -> new RuntimeException("Bonus type not found"));
+            
+            ActivityAdjustment adjustment = new ActivityAdjustment();
+            adjustment.setActivity(activity);
+            adjustment.setBonusType(bonusType);
+            adjustment.setModerator(moderator);
+            adjustment.setPointsAdjustment(bonusType.getPointsAdjustment());
+            adjustment.setComment(comment);
+            
+            activityAdjustmentRepository.save(adjustment);
+        }
+        
+        // Apply penalty if specified (to approved activity)
+        BonusType penaltyType = null;
+        if (penaltyTypeId != null) {
+            penaltyType = bonusTypeRepository.findById(penaltyTypeId)
+                    .orElseThrow(() -> new RuntimeException("Penalty type not found"));
+            
+            ActivityAdjustment adjustment = new ActivityAdjustment();
+            adjustment.setActivity(activity);
+            adjustment.setBonusType(penaltyType);
+            adjustment.setModerator(moderator);
+            adjustment.setPointsAdjustment(penaltyType.getPointsAdjustment());
+            adjustment.setComment(comment);
+            
+            activityAdjustmentRepository.save(adjustment);
+        }
+        
+        // Create notification for participant with bonus/penalty and comment info
+        BonusType adjustmentType = bonusType != null ? bonusType : penaltyType;
+        notificationService.createActivityApprovedNotification(activity, moderator, adjustmentType, comment);
     }
     
     @Transactional
     public void rejectActivity(Long activityId, Long moderatorId, String reason) {
+        rejectActivityWithPenalty(activityId, moderatorId, reason, null);
+    }
+    
+    @Transactional
+    public void rejectActivityWithPenalty(Long activityId, Long moderatorId, String reason, Long penaltyTypeId) {
         Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
         
@@ -101,6 +177,25 @@ public class ModerationService {
         activity.setRejectionReason(reason);
         
         activityRepository.save(activity);
+        
+        // Apply penalty if specified
+        BonusType penaltyType = null;
+        if (penaltyTypeId != null) {
+            penaltyType = bonusTypeRepository.findById(penaltyTypeId)
+                    .orElseThrow(() -> new RuntimeException("Penalty type not found"));
+            
+            ActivityAdjustment adjustment = new ActivityAdjustment();
+            adjustment.setActivity(activity);
+            adjustment.setBonusType(penaltyType);
+            adjustment.setModerator(moderator);
+            adjustment.setPointsAdjustment(penaltyType.getPointsAdjustment());
+            adjustment.setComment(reason);
+            
+            activityAdjustmentRepository.save(adjustment);
+        }
+        
+        // Create notification for participant with penalty info
+        notificationService.createActivityRejectedNotification(activity, moderator, reason, penaltyType);
     }
     
     public ModerationStatsResponse getModerationStats(Long moderatorId) {
@@ -123,6 +218,27 @@ public class ModerationService {
                 .map(ActivityPhoto::getPhotoUrl)
                 .collect(Collectors.toList());
         
+        // Get all participants involved in this activity
+        List<ParticipantSimpleDto> participants = activity.getActivityParticipants().stream()
+                .map(ap -> new ParticipantSimpleDto(
+                        ap.getParticipant().getId(),
+                        ap.getParticipant().getName(),
+                        ap.getParticipant().getProfileImageUrl()
+                ))
+                .collect(Collectors.toList());
+        
+        // If no participants are explicitly set, use the main participant (author)
+        if (participants.isEmpty()) {
+            participants.add(new ParticipantSimpleDto(
+                    activity.getParticipant().getId(),
+                    activity.getParticipant().getName(),
+                    activity.getParticipant().getProfileImageUrl()
+            ));
+        }
+        
+        // Get total team participants count
+        int totalTeamParticipants = teamParticipantRepository.findByTeamId(activity.getTeam().getId()).size();
+        
         return new ActivityModerationResponse(
                 activity.getId(),
                 activity.getActivityType().getName(),
@@ -135,7 +251,26 @@ public class ModerationService {
                 activity.getTeam().getEvent() != null ? activity.getTeam().getEvent().getId() : null,
                 photoUrls,
                 activity.getStatus(),
-                activity.getCreatedAt()
+                activity.getCreatedAt(),
+                participants,
+                totalTeamParticipants
         );
+    }
+    
+    public boolean hasModerationEnabledEvents() {
+        return eventRepository.findAll().stream()
+                .anyMatch(Event::getRequiresActivityApproval);
+    }
+    
+    public List<BonusTypeResponse> getBonusTypesByEvent(Long eventId) {
+        return bonusTypeRepository.findByEventIdAndIsActiveTrue(eventId).stream()
+                .map(bt -> new BonusTypeResponse(
+                        bt.getId(),
+                        bt.getName(),
+                        bt.getDescription(),
+                        bt.getPointsAdjustment(),
+                        bt.getType().name()
+                ))
+                .collect(Collectors.toList());
     }
 }

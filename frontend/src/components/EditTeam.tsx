@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Users, Camera, Save, Trash2, ArrowLeft, X } from 'lucide-react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
+import { Select } from './ui/Select';
 
 interface Participant {
     id: number;
@@ -237,14 +238,15 @@ export const EditTeam: React.FC = () => {
                                         <div className="flex-1">
                                             <p className="font-semibold text-slate-900">{participant.name}</p>
                                         </div>
-                                        <select
+                                        <Select
                                             value={participant.role}
-                                            onChange={(e) => handleRoleChange(participant.id, e.target.value)}
-                                            className="px-3 py-2 rounded-lg border-2 border-slate-200 focus:border-blue-400 outline-none transition-all"
-                                        >
-                                            <option value="Капитан">Капитан</option>
-                                            <option value="Участник">Участник</option>
-                                        </select>
+                                            onChange={(value) => handleRoleChange(participant.id, value)}
+                                            options={[
+                                                { value: 'Капитан', label: 'Капитан' },
+                                                { value: 'Участник', label: 'Участник' }
+                                            ]}
+                                            className="w-40"
+                                        />
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveParticipant(participant.id)}

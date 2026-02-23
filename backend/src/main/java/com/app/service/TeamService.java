@@ -3,6 +3,7 @@ package com.app.service;
 import com.app.dto.*;
 import com.app.model.*;
 import com.app.repository.*;
+import com.app.repository.EventParticipantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,12 +35,49 @@ public class TeamService {
     @Autowired
     private ActivityRepository activityRepository;
     
+    @Autowired
+    private EventParticipantRepository eventParticipantRepository;
+    
+    /**
+     * Получить список всех команд
+     * 
+     * Возвращает краткую информацию о всех командах в системе.
+     * 
+     * @return список команд с ID и названием
+     */
     public List<TeamListResponse> getAllTeams() {
         return teamRepository.findAll().stream()
                 .map(t -> new TeamListResponse(t.getId(), t.getName()))
                 .collect(Collectors.toList());
     }
     
+    /**
+     * Получить команды по ID события
+     * 
+     * Возвращает список команд, привязанных к конкретному событию.
+     * 
+     * @param eventId идентификатор события
+     * @return список команд события
+     */
+    public List<TeamListResponse> getTeamsByEventId(Long eventId) {
+        return teamRepository.findByEventId(eventId).stream()
+                .map(t -> new TeamListResponse(t.getId(), t.getName()))
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Получить детальную информацию о команде
+     * 
+     * Возвращает полную информацию о команде включая:
+     * - Список участников с их ролями
+     * - Общее количество баллов
+     * - Ранг команды в рейтинге
+     * - Привязку к событию
+     * 
+     * @param id идентификатор команды
+     * @return детальная информация о команде
+     * @throws RuntimeException если команда не найдена
+     */
     public TeamDetailResponse getTeam(Long id) {
         Team team = teamRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Team not found"));
@@ -75,15 +113,55 @@ public class TeamService {
         );
     }
     
+    /**
+     * Создать новую команду
+     * 
+     * Создает команду с автоматическим назначением создателя капитаном.
+     * Автоматически привязывает команду к активному событию, если создатель
+     * принял приглашение в событие.
+     * 
+     * Может добавить дополнительных участников при создании.
+     * Проверяет, что участники еще не состоят в других командах.
+     * 
+     * @param request данные для создания команды (название, девиз, участники)
+     * @param creatorId ID создателя команды
+     * @return созданная команда
+     * @throws RuntimeException если создатель/участник не найден или участник уже в команде
+     */
     @Transactional
     public Team createTeam(CreateTeamRequest request, Long creatorId) {
+        Participant creator = participantRepository.findById(creatorId)
+                .orElseThrow(() -> new RuntimeException("Creator not found"));
+        
         Team team = new Team();
         team.setName(request.getName());
         team.setMotto(request.getMotto());
-        team = teamRepository.save(team);
         
-        Participant creator = participantRepository.findById(creatorId)
-                .orElseThrow(() -> new RuntimeException("Creator not found"));
+        // Автоматически привязываем команду к мероприятию, если пользователь принял приглашение
+        List<EventParticipant> acceptedInvitations = eventParticipantRepository
+                .findByParticipantIdAndStatus(creatorId, EventParticipantStatus.ACCEPTED);
+        
+        if (!acceptedInvitations.isEmpty()) {
+            // Выбираем активное мероприятие, если есть, иначе самое последнее по дате начала
+            Event selectedEvent = acceptedInvitations.stream()
+                    .map(EventParticipant::getEvent)
+                    .filter(event -> event != null)
+                    .filter(event -> event.getStatus() == EventStatus.ACTIVE)
+                    .findFirst()
+                    .orElseGet(() -> 
+                        acceptedInvitations.stream()
+                            .map(EventParticipant::getEvent)
+                            .filter(event -> event != null)
+                            .max((e1, e2) -> e1.getStartDate().compareTo(e2.getStartDate()))
+                            .orElse(null)
+                    );
+            
+            if (selectedEvent != null) {
+                team.setEvent(selectedEvent);
+            }
+        }
+        
+        team = teamRepository.save(team);
         
         TeamParticipant creatorParticipant = new TeamParticipant();
         creatorParticipant.setTeam(team);
@@ -115,6 +193,17 @@ public class TeamService {
         return team;
     }
     
+    /**
+     * Обновить информацию о команде
+     * 
+     * Обновляет название, девиз и изображение команды.
+     * Все поля опциональны - обновляются только переданные значения.
+     * 
+     * @param id идентификатор команды
+     * @param request данные для обновления
+     * @return обновленная команда
+     * @throws RuntimeException если команда не найдена
+     */
     @Transactional
     public Team updateTeam(Long id, UpdateTeamRequest request) {
         Team team = teamRepository.findById(id)
@@ -133,11 +222,28 @@ public class TeamService {
         return teamRepository.save(team);
     }
     
+    /**
+     * Удалить команду
+     * 
+     * Полностью удаляет команду из системы.
+     * Каскадно удаляются все связанные данные (участники команды, активности и т.д.).
+     * 
+     * @param id идентификатор команды
+     */
     @Transactional
     public void deleteTeam(Long id) {
         teamRepository.deleteById(id);
     }
     
+    /**
+     * Обновить изображение команды
+     * 
+     * Устанавливает новое изображение для команды.
+     * 
+     * @param id идентификатор команды
+     * @param imageUrl URL загруженного изображения
+     * @throws RuntimeException если команда не найдена
+     */
     @Transactional
     public void updateTeamImage(Long id, String imageUrl) {
         Team team = teamRepository.findById(id)
@@ -146,11 +252,27 @@ public class TeamService {
         teamRepository.save(team);
     }
     
+    /**
+     * Покинуть команду
+     * 
+     * Удаляет участника из команды.
+     * 
+     * @param teamId идентификатор команды
+     * @param participantId идентификатор участника
+     */
     @Transactional
     public void leaveTeam(Long teamId, Long participantId) {
         teamParticipantRepository.deleteByTeamIdAndParticipantId(teamId, participantId);
     }
     
+    /**
+     * Получить список участников команды
+     * 
+     * Возвращает всех участников команды с их ролями.
+     * 
+     * @param teamId идентификатор команды
+     * @return список участников с ID, именем и ролью
+     */
     public List<TeamParticipantDto> getTeamParticipants(Long teamId) {
         return teamParticipantRepository.findByTeamId(teamId).stream()
                 .map(tp -> new TeamParticipantDto(
@@ -161,6 +283,14 @@ public class TeamService {
                 .collect(Collectors.toList());
     }
     
+    /**
+     * Получить рейтинг всех команд
+     * 
+     * Возвращает список всех команд, отсортированный по общему количеству баллов.
+     * Для каждой команды рассчитывается ранг на основе баллов.
+     * 
+     * @return список команд с рейтингом, отсортированный по баллам (убывание)
+     */
     public List<TeamRankingResponse> getTeamRankings() {
         List<Team> teams = teamRepository.findAll();
         List<TeamRankingResponse> rankings = new ArrayList<>();
@@ -191,6 +321,16 @@ public class TeamService {
         return rankings;
     }
     
+    /**
+     * Рассчитать ранг команды
+     * 
+     * Определяет позицию команды в рейтинге на основе общего количества баллов.
+     * Команды с большим количеством баллов имеют более высокий ранг (меньшее число).
+     * 
+     * @param teamId идентификатор команды
+     * @param totalPoints общее количество баллов команды
+     * @return ранг команды (1 = лучшая команда)
+     */
     private Integer calculateRank(Long teamId, Integer totalPoints) {
         List<Team> allTeams = teamRepository.findAll();
         int rank = 1;
@@ -210,6 +350,19 @@ public class TeamService {
         return rank;
     }
     
+    /**
+     * Получить статистику регулярности активностей команд
+     * 
+     * Рассчитывает для каждой команды:
+     * - Текущую серию (streak) - количество дней подряд с активностями
+     * - Общее количество активных дней
+     * - Календарь активности за последние 14 дней
+     * - Общее количество баллов и ранг
+     * 
+     * Серия считается активной если есть активность сегодня или вчера.
+     * 
+     * @return список команд со статистикой регулярности, отсортированный по баллам
+     */
     public List<TeamRegularityResponse> getTeamRegularityStats() {
         List<Team> teams = teamRepository.findAll();
         List<TeamRegularityResponse> regularityStats = new ArrayList<>();

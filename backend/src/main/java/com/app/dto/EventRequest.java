@@ -35,5 +35,6 @@ public class EventRequest {
     private List<String> dashboardTypes;
     private List<String> dashboardOrder;
     private Boolean teamBasedCompetition;
+    private Boolean trackActivityDuration;
     private Set<Long> eventAdminIds;
 }

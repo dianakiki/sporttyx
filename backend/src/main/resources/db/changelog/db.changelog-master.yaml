@@ -45,3 +45,31 @@ databaseChangeLog:
       file: db/changelog/changes/023-add-activity-moderation.yaml
   - include:
       file: db/changelog/changes/024-convert-activity-status-to-varchar.yaml
+  - include:
+      file: db/changelog/changes/025-add-description-to-activities.yaml
+  - include:
+      file: db/changelog/changes/026-create-bonus-types-table.yaml
+  - include:
+      file: db/changelog/changes/027-create-activity-adjustments-table.yaml
+  - include:
+      file: db/changelog/changes/028-create-notifications-table.yaml
+  - include:
+      file: db/changelog/changes/029-create-activity-participants-table.yaml
+  - include:
+      file: db/changelog/changes/030-create-bug-reports-table.yaml
+  - include:
+      file: db/changelog/changes/031-create-participant-badges-table.yaml
+  - include:
+      file: db/changelog/changes/032-add-duration-tracking-fields.yaml
+  - include:
+      file: db/changelog/changes/033-add-bug-number-to-bug-reports.yaml
+  - include:
+      file: db/changelog/changes/034-add-team-based-competition-to-events.yaml
+  - include:
+      file: db/changelog/changes/035-increase-dashboard-types-length.yaml
+  - include:
+      file: db/changelog/changes/036-create-event-participants-table.yaml
+  - include:
+      file: db/changelog/changes/037-make-bug-number-nullable.yaml
+  - include:
+      file: db/changelog/changes/038-create-notification-templates-table.yaml

@@ -1,13 +1,19 @@
 package com.app.service;
 
 import com.app.dto.ChangePasswordRequest;
+import com.app.dto.EventResponse;
 import com.app.dto.ParticipantRankingResponse;
 import com.app.dto.ParticipantResponse;
 import com.app.dto.ParticipantSearchResponse;
 import com.app.dto.ParticipantUpdateRequest;
+import com.app.model.Event;
+import com.app.model.EventParticipant;
+import com.app.model.EventParticipantStatus;
 import com.app.model.Participant;
 import com.app.model.TeamParticipant;
 import com.app.repository.ActivityRepository;
+import com.app.repository.EventParticipantRepository;
+import com.app.repository.EventRepository;
 import com.app.repository.ParticipantRepository;
 import com.app.repository.TeamParticipantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class ParticipantService {
@@ -33,6 +40,15 @@ public class ParticipantService {
     
     @Autowired
     private PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private EventRepository eventRepository;
+    
+    @Autowired
+    private EventService eventService;
+    
+    @Autowired
+    private EventParticipantRepository eventParticipantRepository;
     
     public ParticipantResponse getParticipant(Long id) {
         Participant participant = participantRepository.findById(id)
@@ -101,7 +117,7 @@ public class ParticipantService {
                 .orElseThrow(() -> new RuntimeException("Participant not found"));
         
         if (!passwordEncoder.matches(request.getOldPassword(), participant.getPassword())) {
-            throw new RuntimeException("Old password is incorrect");
+            throw new com.app.exception.InvalidPasswordException("Неверный текущий пароль");
         }
         
         participant.setPassword(passwordEncoder.encode(request.getNewPassword()));
@@ -142,5 +158,33 @@ public class ParticipantService {
         rankings.forEach(ranking -> ranking.setRank(rank.getAndIncrement()));
         
         return rankings;
+    }
+    
+    public List<EventResponse> getParticipantEvents(Long participantId) {
+        // Получаем команды пользователя
+        List<TeamParticipant> userTeams = teamParticipantRepository.findByParticipantId(participantId);
+        
+        // Получаем события через команды
+        List<Event> eventsFromTeams = userTeams.stream()
+                .map(tp -> tp.getTeam().getEvent())
+                .filter(event -> event != null)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        // Получаем события через принятые приглашения
+        List<EventParticipant> acceptedInvitations = eventParticipantRepository
+                .findByParticipantIdAndStatus(participantId, EventParticipantStatus.ACCEPTED);
+        
+        List<Event> eventsFromInvitations = acceptedInvitations.stream()
+                .map(EventParticipant::getEvent)
+                .filter(event -> event != null)
+                .collect(Collectors.toList());
+        
+        // Объединяем и удаляем дубликаты
+        return Stream.concat(eventsFromTeams.stream(), eventsFromInvitations.stream())
+                .distinct()
+                .sorted((e1, e2) -> e2.getStartDate().compareTo(e1.getStartDate()))
+                .map(event -> eventService.toEventResponse(event))
+                .collect(Collectors.toList());
     }
 }

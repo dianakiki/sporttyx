@@ -63,6 +63,19 @@ public class EventService {
     public EventResponse updateEvent(Long id, EventRequest request) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Event not found"));
+        
+        // Check if trying to set status to ACTIVE
+        if (request.getStatus() != null && "ACTIVE".equals(request.getStatus())) {
+            // Check if there's already an active event (excluding current event)
+            List<Event> activeEvents = eventRepository.findByStatus(EventStatus.ACTIVE);
+            boolean hasOtherActiveEvent = activeEvents.stream()
+                    .anyMatch(e -> !e.getId().equals(id));
+            
+            if (hasOtherActiveEvent) {
+                throw new RuntimeException("Может быть только одно активное мероприятие. Сначала завершите или переведите в черновик текущее активное мероприятие.");
+            }
+        }
+        
         updateEventFromRequest(event, request);
         event = eventRepository.save(event);
         return toResponse(event);
@@ -167,6 +180,9 @@ public class EventService {
         if (request.getTeamBasedCompetition() != null) {
             event.setTeamBasedCompetition(request.getTeamBasedCompetition());
         }
+        if (request.getTrackActivityDuration() != null) {
+            event.setTrackActivityDuration(request.getTrackActivityDuration());
+        }
         
         if (request.getEventAdminIds() != null) {
             Set<Participant> admins = new HashSet<>();
@@ -177,6 +193,10 @@ public class EventService {
             }
             event.setEventAdmins(admins);
         }
+    }
+    
+    public EventResponse toEventResponse(Event event) {
+        return toResponse(event);
     }
     
     private EventResponse toResponse(Event event) {
@@ -217,6 +237,7 @@ public class EventService {
                 dashboardTypes,
                 dashboardOrder,
                 event.getTeamBasedCompetition(),
+                event.getTrackActivityDuration(),
                 adminDtos,
                 event.getCreatedAt(),
                 event.getUpdatedAt()

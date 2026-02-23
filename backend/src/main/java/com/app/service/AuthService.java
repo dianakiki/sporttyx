@@ -3,6 +3,7 @@ package com.app.service;
 import com.app.dto.AuthResponse;
 import com.app.dto.LoginRequest;
 import com.app.dto.RegisterRequest;
+import com.app.exception.UsernameAlreadyExistsException;
 import com.app.model.Participant;
 import com.app.repository.ParticipantRepository;
 import com.app.security.JwtUtil;
@@ -34,7 +35,7 @@ public class AuthService {
         System.out.println("Password length: " + (request.getPassword() != null ? request.getPassword().length() : "null"));
         
         if (participantRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new RuntimeException("Username already exists");
+            throw new UsernameAlreadyExistsException("Пользователь с таким логином уже существует");
         }
         
         if (request.getName() == null || request.getName().trim().isEmpty()) {

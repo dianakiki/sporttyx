@@ -3,6 +3,8 @@ package com.app.controller;
 import com.app.dto.ActivityReactionResponse;
 import com.app.dto.MessageResponse;
 import com.app.dto.ReactionRequest;
+import com.app.model.Participant;
+import com.app.repository.ParticipantRepository;
 import com.app.service.ActivityReactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,14 +19,18 @@ public class ActivityReactionController {
     @Autowired
     private ActivityReactionService activityReactionService;
     
+    @Autowired
+    private ParticipantRepository participantRepository;
+    
     @PostMapping("/{id}/reactions")
     public ResponseEntity<?> addOrUpdateReaction(
             @PathVariable Long id,
             @RequestBody ReactionRequest request,
             Authentication authentication) {
         
-        Long participantId = Long.parseLong(authentication.getName());
-        activityReactionService.addOrUpdateReaction(id, participantId, request.getReactionType());
+        Participant participant = participantRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        activityReactionService.addOrUpdateReaction(id, participant.getId(), request.getReactionType());
         
         return ResponseEntity.ok(new MessageResponse("Reaction added successfully"));
     }
@@ -34,8 +40,9 @@ public class ActivityReactionController {
             @PathVariable Long id,
             Authentication authentication) {
         
-        Long participantId = Long.parseLong(authentication.getName());
-        activityReactionService.removeReaction(id, participantId);
+        Participant participant = participantRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        activityReactionService.removeReaction(id, participant.getId());
         
         return ResponseEntity.ok(new MessageResponse("Reaction removed successfully"));
     }
@@ -47,7 +54,11 @@ public class ActivityReactionController {
         
         Long currentUserId = null;
         if (authentication != null) {
-            currentUserId = Long.parseLong(authentication.getName());
+            Participant participant = participantRepository.findByUsername(authentication.getName())
+                    .orElse(null);
+            if (participant != null) {
+                currentUserId = participant.getId();
+            }
         }
         
         ActivityReactionResponse response = activityReactionService.getActivityReactions(id, currentUserId);

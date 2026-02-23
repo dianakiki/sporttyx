@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 025-add-description-to-activities
+      author: diana
+      changes:
+        - addColumn:
+            tableName: activities
+            columns:
+              - column:
+                  name: description
+                  type: TEXT
+                  remarks: "Description of the activity (post text)"

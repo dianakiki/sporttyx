@@ -67,7 +67,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ activityId }) =>
 
             if (response.ok) {
                 const newCommentData = await response.json();
-                setComments([newCommentData, ...comments]);
+                setComments([...comments, newCommentData]);
                 setNewComment('');
             }
         } catch (err) {

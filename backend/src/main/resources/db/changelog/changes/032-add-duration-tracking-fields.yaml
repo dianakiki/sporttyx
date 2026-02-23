@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 032-add-duration-tracking-fields
+      author: system
+      changes:
+        - addColumn:
+            tableName: activities
+            columns:
+              - column:
+                  name: duration_minutes
+                  type: integer
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: events
+            columns:
+              - column:
+                  name: track_activity_duration
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

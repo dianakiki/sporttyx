@@ -36,11 +36,23 @@ public class Activity {
     @Column(nullable = false)
     private Integer energy;
     
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
+    
+    @Column(columnDefinition = "TEXT")
+    private String description;
+    
     @Column(name = "photo_url")
     private String photoUrl;
     
     @OneToMany(mappedBy = "activity", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ActivityPhoto> photos = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "activity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ActivityAdjustment> adjustments = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "activity", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ActivityParticipant> activityParticipants = new ArrayList<>();
     
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

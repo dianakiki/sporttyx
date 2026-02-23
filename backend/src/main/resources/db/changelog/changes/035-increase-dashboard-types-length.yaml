@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 035-increase-dashboard-types-length
+      author: system
+      changes:
+        - modifyDataType:
+            tableName: events
+            columnName: dashboard_types
+            newDataType: varchar(200)

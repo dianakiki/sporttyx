@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-create-activity-adjustments-table
+      author: diana
+      changes:
+        - createTable:
+            tableName: activity_adjustments
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: activity_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_activity_adjustments_activity
+                    references: activities(id)
+              - column:
+                  name: bonus_type_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_activity_adjustments_bonus_type
+                    references: bonus_types(id)
+              - column:
+                  name: moderator_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_activity_adjustments_moderator
+                    references: participants(id)
+              - column:
+                  name: points_adjustment
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: comment
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false

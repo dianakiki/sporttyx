@@ -4,6 +4,8 @@ import com.app.dto.CommentResponse;
 import com.app.dto.CreateCommentRequest;
 import com.app.dto.MessageResponse;
 import com.app.dto.ReactionRequest;
+import com.app.model.Participant;
+import com.app.repository.ParticipantRepository;
 import com.app.service.ActivityCommentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,14 +22,18 @@ public class ActivityCommentController {
     @Autowired
     private ActivityCommentService activityCommentService;
     
+    @Autowired
+    private ParticipantRepository participantRepository;
+    
     @PostMapping("/activities/{id}/comments")
     public ResponseEntity<CommentResponse> createComment(
             @PathVariable Long id,
             @RequestBody CreateCommentRequest request,
             Authentication authentication) {
         
-        Long participantId = Long.parseLong(authentication.getName());
-        CommentResponse response = activityCommentService.createComment(id, participantId, request);
+        Participant participant = participantRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        CommentResponse response = activityCommentService.createComment(id, participant.getId(), request);
         
         return ResponseEntity.ok(response);
     }
@@ -38,8 +44,9 @@ public class ActivityCommentController {
             @RequestBody CreateCommentRequest request,
             Authentication authentication) {
         
-        Long participantId = Long.parseLong(authentication.getName());
-        CommentResponse response = activityCommentService.updateComment(id, participantId, request.getText());
+        Participant participant = participantRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        CommentResponse response = activityCommentService.updateComment(id, participant.getId(), request.getText());
         
         return ResponseEntity.ok(response);
     }
@@ -49,8 +56,9 @@ public class ActivityCommentController {
             @PathVariable Long id,
             Authentication authentication) {
         
-        Long participantId = Long.parseLong(authentication.getName());
-        activityCommentService.deleteComment(id, participantId);
+        Participant participant = participantRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        activityCommentService.deleteComment(id, participant.getId());
         
         return ResponseEntity.ok(new MessageResponse("Comment deleted successfully"));
     }
@@ -62,7 +70,11 @@ public class ActivityCommentController {
         
         Long currentUserId = null;
         if (authentication != null) {
-            currentUserId = Long.parseLong(authentication.getName());
+            Participant participant = participantRepository.findByUsername(authentication.getName())
+                    .orElse(null);
+            if (participant != null) {
+                currentUserId = participant.getId();
+            }
         }
         
         List<CommentResponse> comments = activityCommentService.getActivityComments(id, currentUserId);
@@ -75,8 +87,9 @@ public class ActivityCommentController {
             @RequestBody ReactionRequest request,
             Authentication authentication) {
         
-        Long participantId = Long.parseLong(authentication.getName());
-        activityCommentService.addOrUpdateCommentReaction(id, participantId, request.getReactionType());
+        Participant participant = participantRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        activityCommentService.addOrUpdateCommentReaction(id, participant.getId(), request.getReactionType());
         
         return ResponseEntity.ok(new MessageResponse("Reaction added successfully"));
     }
@@ -86,8 +99,9 @@ public class ActivityCommentController {
             @PathVariable Long id,
             Authentication authentication) {
         
-        Long participantId = Long.parseLong(authentication.getName());
-        activityCommentService.removeCommentReaction(id, participantId);
+        Participant participant = participantRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        activityCommentService.removeCommentReaction(id, participant.getId());
         
         return ResponseEntity.ok(new MessageResponse("Reaction removed successfully"));
     }

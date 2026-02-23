@@ -39,8 +39,10 @@ public class TeamController {
      * Получить список всех команд
      */
     @GetMapping
-    public ResponseEntity<List<TeamListResponse>> getAllTeams() {
-        List<TeamListResponse> teams = teamService.getAllTeams();
+    public ResponseEntity<List<TeamListResponse>> getAllTeams(@RequestParam(required = false) Long eventId) {
+        List<TeamListResponse> teams = eventId != null 
+            ? teamService.getTeamsByEventId(eventId)
+            : teamService.getAllTeams();
         return ResponseEntity.ok(teams);
     }
     
