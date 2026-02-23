@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sporttyx-demo
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - demo-network
+
+networks:
+  demo-network:
+    driver: bridge
