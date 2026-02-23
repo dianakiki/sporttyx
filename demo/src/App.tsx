@@ -9,6 +9,7 @@ import { AddActivityForm } from './components/AddActivityForm';
 import { AdminPanel } from './components/AdminPanel';
 import { ModerationPanel } from './components/ModerationPanel';
 import { RoleSelector } from './components/RoleSelector';
+import { ActivityView } from './components/ActivityView';
 import { MainLayout } from './layouts/MainLayout';
 
 function App() {
@@ -84,6 +85,14 @@ function App() {
           element={
             <MainLayout>
               <AddActivityForm />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/activity/:activityId"
+          element={
+            <MainLayout>
+              <ActivityView />
             </MainLayout>
           }
         />

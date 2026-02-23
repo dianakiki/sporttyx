@@ -1,19 +1,39 @@
 import React, { useState } from 'react';
-import { X, Bell, Check, Mail } from 'lucide-react';
+import { X, Bell, Check, Users, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+interface Notification {
+    id: number;
+    type: string;
+    title: string;
+    message: string;
+    isRead: boolean;
+    createdAt: string;
+    activityId?: number;
+}
+
+interface TeamInvitation {
+    id: number;
+    teamId: number;
+    teamName: string;
+    invitedBy: string;
+    invitedAt: string;
+}
 
 interface NotificationsModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-const mockNotifications = [
+const mockNotifications: Notification[] = [
     {
         id: 1,
         type: 'ACTIVITY_APPROVED',
         title: 'Активность одобрена',
         message: 'Ваша активность "Утренняя пробежка" была одобрена',
         isRead: false,
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        activityId: 1
     },
     {
         id: 2,
@@ -21,7 +41,8 @@ const mockNotifications = [
         title: 'Новый комментарий',
         message: 'Алексей Иванов прокомментировал вашу активность',
         isRead: false,
-        createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
+        createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+        activityId: 1
     },
     {
         id: 3,
@@ -33,211 +54,198 @@ const mockNotifications = [
     }
 ];
 
-const mockInvitations = [
+const mockInvitations: TeamInvitation[] = [
     {
         id: 1,
-        eventName: 'Летний Триатлон 2024',
-        invitedByName: 'Администратор',
+        teamId: 2,
+        teamName: 'Бегуны Города',
+        invitedBy: 'Администратор',
         invitedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
     }
 ];
 
 export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose }) => {
-    const [activeTab, setActiveTab] = useState<'notifications' | 'invitations'>('notifications');
-    const [notifications, setNotifications] = useState(mockNotifications);
-
-    if (!isOpen) return null;
-
-    const formatTimeAgo = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return 'только что';
-        if (diffMins < 60) return `${diffMins} мин назад`;
-        if (diffHours < 24) return `${diffHours} ч назад`;
-        if (diffDays < 7) return `${diffDays} дн назад`;
-        return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-    };
+    const navigate = useNavigate();
+    const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+    const [invitations, setInvitations] = useState<TeamInvitation[]>(mockInvitations);
 
     const markAsRead = (id: number) => {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     };
 
-    const markAllAsRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    const handleDeleteNotification = (id: number) => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
     };
 
-    const handleAcceptInvitation = (id: number) => {
+    const handleNotificationClick = (notification: Notification) => {
+        if (!notification.isRead) {
+            markAsRead(notification.id);
+        }
+        if (notification.activityId) {
+            onClose();
+            navigate(`/activity/${notification.activityId}`);
+        }
+    };
+
+    const handleAcceptInvitation = (id: number, teamId: number) => {
+        setInvitations(prev => prev.filter(inv => inv.id !== id));
         alert('Приглашение принято! (Demo режим)');
     };
 
     const handleDeclineInvitation = (id: number) => {
-        alert('Приглашение отклонено! (Demo режим)');
+        setInvitations(prev => prev.filter(inv => inv.id !== id));
     };
 
-    return (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-            <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
-            
-            <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col">
-                <div className="p-6 border-b border-slate-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-2xl font-bold text-slate-900">Уведомления</h2>
-                        <button
-                            onClick={onClose}
-                            className="w-10 h-10 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center transition-all"
-                        >
-                            <X className="w-5 h-5 text-slate-700" />
-                        </button>
-                    </div>
+    if (!isOpen) return null;
 
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setActiveTab('notifications')}
-                            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${
-                                activeTab === 'notifications'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                        >
-                            <Bell className="w-4 h-4 inline mr-2" />
-                            Уведомления
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('invitations')}
-                            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${
-                                activeTab === 'invitations'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                        >
-                            <Mail className="w-4 h-4 inline mr-2" />
-                            Приглашения
-                            {mockInvitations.length > 0 && (
-                                <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                                    {mockInvitations.length}
+    const totalUnread = invitations.length + notifications.filter(n => !n.isRead).length;
+    const hasAnyNotifications = invitations.length > 0 || notifications.length > 0;
+
+    return (
+        <>
+            <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+            <div className="fixed top-20 right-6 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 max-h-[80vh] overflow-hidden flex flex-col">
+                <div className="p-6 border-b border-slate-200">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Bell className="w-6 h-6 text-blue-600" />
+                            <h2 className="text-2xl font-bold text-slate-900">Уведомления</h2>
+                            {totalUnread > 0 && (
+                                <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                                    {totalUnread}
                                 </span>
                             )}
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                            <X className="w-5 h-5 text-slate-600" />
                         </button>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto">
-                    {activeTab === 'notifications' ? (
-                        <div>
-                            {notifications.filter(n => !n.isRead).length > 0 && (
-                                <div className="p-4 border-b border-slate-200">
-                                    <button
-                                        onClick={markAllAsRead}
-                                        className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
+                <div className="flex-1 overflow-y-auto p-6">
+                    {hasAnyNotifications ? (
+                        <div className="space-y-4">
+                            {notifications.map((notification) => {
+                                const isApproved = notification.type === 'ACTIVITY_APPROVED';
+                                const isRejected = notification.type === 'ACTIVITY_REJECTED';
+                                
+                                return (
+                                    <div
+                                        key={`notif-${notification.id}`}
+                                        className={`p-4 border-2 rounded-xl transition-all ${
+                                            notification.isRead 
+                                                ? 'bg-slate-50 border-slate-200' 
+                                                : isApproved 
+                                                    ? 'bg-green-50 border-green-200' 
+                                                    : 'bg-blue-50 border-blue-200'
+                                        } ${
+                                            notification.activityId ? 'cursor-pointer hover:shadow-md' : ''
+                                        }`}
+                                        onClick={() => notification.activityId && handleNotificationClick(notification)}
                                     >
-                                        Отметить все как прочитанные
-                                    </button>
-                                </div>
-                            )}
-
-                            {notifications.length === 0 ? (
-                                <div className="p-8 text-center">
-                                    <Bell className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                                    <p className="text-slate-500">Нет уведомлений</p>
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-slate-200">
-                                    {notifications.map((notification) => (
-                                        <div
-                                            key={notification.id}
-                                            onClick={() => markAsRead(notification.id)}
-                                            className={`p-4 hover:bg-slate-50 transition-all cursor-pointer ${
-                                                !notification.isRead ? 'bg-blue-50' : ''
-                                            }`}
-                                        >
-                                            <div className="flex items-start gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                                    !notification.isRead ? 'bg-blue-100' : 'bg-slate-100'
-                                                }`}>
-                                                    <Bell className={`w-5 h-5 ${
-                                                        !notification.isRead ? 'text-blue-600' : 'text-slate-600'
-                                                    }`} />
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    {isApproved ? (
+                                                        <CheckCircle className="w-5 h-5 text-green-600" />
+                                                    ) : isRejected ? (
+                                                        <XCircle className="w-5 h-5 text-red-600" />
+                                                    ) : (
+                                                        <Bell className="w-5 h-5 text-blue-600" />
+                                                    )}
+                                                    <h3 className="font-bold text-slate-900 text-sm">
+                                                        {notification.title}
+                                                    </h3>
+                                                    {!notification.isRead && (
+                                                        <span className="px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">
+                                                            Новое
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <h3 className="font-semibold text-slate-900 text-sm">
-                                                            {notification.title}
-                                                        </h3>
-                                                        {!notification.isRead && (
-                                                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-sm text-slate-600 mb-2">
-                                                        {notification.message}
-                                                    </p>
-                                                    <p className="text-xs text-slate-400">
-                                                        {formatTimeAgo(notification.createdAt)}
-                                                    </p>
-                                                </div>
+                                                <p className="text-slate-700 mb-1 text-sm whitespace-pre-line">
+                                                    {notification.message}
+                                                </p>
+                                                <p className="text-xs text-slate-500">
+                                                    {new Date(notification.createdAt).toLocaleDateString('ru-RU', {
+                                                        day: 'numeric',
+                                                        month: 'long',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })}
+                                                </p>
                                             </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteNotification(notification.id);
+                                                }}
+                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                title="Удалить"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
-                                    ))}
+                                    </div>
+                                );
+                            })}
+
+                            {invitations.map((invitation) => (
+                                <div
+                                    key={`inv-${invitation.id}`}
+                                    className="p-4 bg-blue-50 border-2 border-blue-100 rounded-xl hover:border-blue-200 transition-all"
+                                >
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Users className="w-5 h-5 text-blue-600" />
+                                                <h3 className="font-bold text-slate-900 text-sm">
+                                                    Приглашение в команду
+                                                </h3>
+                                            </div>
+                                            <p className="text-slate-700 mb-1 text-sm">
+                                                <span className="font-semibold">{invitation.invitedBy}</span> приглашает вас в команду{' '}
+                                                <span className="font-semibold text-blue-600">{invitation.teamName}</span>
+                                            </p>
+                                            <p className="text-xs text-slate-500">
+                                                {new Date(invitation.invitedAt).toLocaleDateString('ru-RU', {
+                                                    day: 'numeric',
+                                                    month: 'long',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleAcceptInvitation(invitation.id, invitation.teamId)}
+                                                className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg"
+                                                title="Принять"
+                                            >
+                                                <Check className="w-5 h-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeclineInvitation(invitation.id)}
+                                                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg"
+                                                title="Отклонить"
+                                            >
+                                                <X className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
+                            ))}
                         </div>
                     ) : (
-                        <div>
-                            {mockInvitations.length === 0 ? (
-                                <div className="p-8 text-center">
-                                    <Mail className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                                    <p className="text-slate-500">Нет приглашений</p>
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-slate-200">
-                                    {mockInvitations.map((invitation) => (
-                                        <div key={invitation.id} className="p-4">
-                                            <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
-                                                <div className="flex items-start gap-3 mb-3">
-                                                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                                        <Mail className="w-5 h-5 text-orange-600" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <h3 className="font-bold text-slate-900 mb-1">
-                                                            {invitation.eventName}
-                                                        </h3>
-                                                        <p className="text-sm text-slate-600 mb-1">
-                                                            Приглашение от: {invitation.invitedByName}
-                                                        </p>
-                                                        <p className="text-xs text-slate-500">
-                                                            {formatTimeAgo(invitation.invitedAt)}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleAcceptInvitation(invitation.id)}
-                                                        className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
-                                                    >
-                                                        <Check className="w-4 h-4" />
-                                                        Принять
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeclineInvitation(invitation.id)}
-                                                        className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                        Отклонить
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                        <div className="text-center py-8">
+                            <Bell className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                            <p className="text-slate-500">Нет новых уведомлений</p>
                         </div>
                     )}
                 </div>
             </div>
-        </div>
+        </>
     );
 };

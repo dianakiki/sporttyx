@@ -1,41 +1,102 @@
 import React, { useState } from 'react';
-import { Shield, Calendar, Users, Activity, Settings, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Calendar, HelpCircle, Plus, ChevronRight, Edit, Search } from 'lucide-react';
+
+interface EventListItem {
+    id: number;
+    name: string;
+    startDate: string;
+    endDate: string;
+    status: string;
+    displayOnHomepage: boolean;
+}
+
+interface Participant {
+    id: number;
+    username: string;
+    name: string;
+    email: string;
+    role: string;
+}
+
+const mockEvents: EventListItem[] = [
+    {
+        id: 1,
+        name: 'Весенний Марафон 2024',
+        startDate: '2024-03-15T09:00:00',
+        endDate: '2024-03-15T15:00:00',
+        status: 'ACTIVE',
+        displayOnHomepage: true
+    },
+    {
+        id: 2,
+        name: 'Велогонка по городу',
+        startDate: '2024-04-01T10:00:00',
+        endDate: '2024-04-01T14:00:00',
+        status: 'UPCOMING',
+        displayOnHomepage: false
+    }
+];
+
+const mockParticipants: Participant[] = [
+    { id: 1, username: 'demo_user', name: 'Демо Пользователь', email: 'demo@sporttyx.com', role: 'USER' },
+    { id: 2, username: 'runner_pro', name: 'Алексей Иванов', email: 'alex@example.com', role: 'USER' },
+    { id: 3, username: 'swimmer_girl', name: 'Мария Петрова', email: 'maria@example.com', role: 'MODERATOR' }
+];
 
 export const AdminPanel: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'events' | 'users' | 'settings'>('events');
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState<'events' | 'users' | 'bug-reports'>('events');
+    const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [events] = useState<EventListItem[]>(mockEvents);
+    const [participants] = useState<Participant[]>(mockParticipants);
 
-    const mockEvents = [
-        { id: 1, name: 'Весенний Марафон 2024', status: 'ACTIVE', participants: 45 },
-        { id: 2, name: 'Велогонка по городу', status: 'UPCOMING', participants: 28 }
-    ];
+    const translateStatus = (status: string) => {
+        const translations: { [key: string]: string } = {
+            'ACTIVE': 'Активное',
+            'UPCOMING': 'Предстоящее',
+            'DRAFT': 'Черновик',
+            'COMPLETED': 'Завершено'
+        };
+        return translations[status] || status;
+    };
 
-    const mockUsers = [
-        { id: 1, name: 'Демо Пользователь', role: 'USER', team: 'Спортивные Энтузиасты' },
-        { id: 2, name: 'Алексей Иванов', role: 'USER', team: 'Спортивные Энтузиасты' },
-        { id: 3, name: 'Мария Петрова', role: 'MODERATOR', team: 'Спортивные Энтузиасты' }
-    ];
+    const translateRole = (role: string) => {
+        const translations: { [key: string]: string } = {
+            'USER': 'Пользователь',
+            'MODERATOR': 'Модератор',
+            'ADMIN': 'Администратор'
+        };
+        return translations[role] || role;
+    };
+
+    const filteredParticipants = participants.filter(p =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     return (
-        <div className="min-h-screen p-6 md:p-8">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
             <div className="max-w-7xl mx-auto">
-                <div className="bg-white rounded-3xl shadow-xl p-8 mb-6">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <Shield className="w-8 h-8 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-4xl font-bold text-slate-900">Панель администратора</h1>
-                            <p className="text-slate-600">Управление мероприятиями и пользователями</p>
-                        </div>
-                    </div>
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold text-slate-900 mb-2">
+                        Панель администратора
+                    </h1>
+                    <p className="text-slate-600">
+                        Управление мероприятиями и пользователями
+                    </p>
+                </div>
 
-                    <div className="flex gap-2 border-b border-slate-200">
+                <div className="bg-white rounded-2xl shadow-lg mb-6">
+                    <div className="flex border-b border-slate-200">
                         <button
                             onClick={() => setActiveTab('events')}
-                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
+                            className={`flex items-center gap-2 px-6 py-4 font-semibold transition-all ${
                                 activeTab === 'events'
-                                    ? 'text-purple-600 border-b-2 border-purple-600'
-                                    : 'text-slate-600 hover:text-purple-600'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-slate-600 hover:text-blue-600'
                             }`}
                         >
                             <Calendar className="w-5 h-5" />
@@ -43,95 +104,121 @@ export const AdminPanel: React.FC = () => {
                         </button>
                         <button
                             onClick={() => setActiveTab('users')}
-                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
+                            className={`flex items-center gap-2 px-6 py-4 font-semibold transition-all ${
                                 activeTab === 'users'
-                                    ? 'text-purple-600 border-b-2 border-purple-600'
-                                    : 'text-slate-600 hover:text-purple-600'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-slate-600 hover:text-blue-600'
                             }`}
                         >
                             <Users className="w-5 h-5" />
                             Пользователи
                         </button>
                         <button
-                            onClick={() => setActiveTab('settings')}
-                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
-                                activeTab === 'settings'
-                                    ? 'text-purple-600 border-b-2 border-purple-600'
-                                    : 'text-slate-600 hover:text-purple-600'
+                            onClick={() => setActiveTab('bug-reports')}
+                            className={`flex items-center gap-2 px-6 py-4 font-semibold transition-all ${
+                                activeTab === 'bug-reports'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-slate-600 hover:text-blue-600'
                             }`}
                         >
-                            <Settings className="w-5 h-5" />
-                            Настройки
+                            <HelpCircle className="w-5 h-5" />
+                            Баг-репорты
                         </button>
                     </div>
                 </div>
 
-                {activeTab === 'events' && (
-                    <div className="bg-white rounded-3xl shadow-xl p-8">
-                        <div className="flex items-center justify-between mb-6">
+                {activeTab === 'events' && !selectedEventId && (
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center mb-4">
                             <h2 className="text-2xl font-bold text-slate-900">Мероприятия</h2>
-                            <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all">
+                            <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg transition-all">
                                 <Plus className="w-5 h-5" />
                                 Создать мероприятие
                             </button>
                         </div>
 
-                        <div className="space-y-4">
-                            {mockEvents.map((event) => (
-                                <div key={event.id} className="border-2 border-slate-200 rounded-2xl p-6 hover:border-purple-300 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <h3 className="text-xl font-bold text-slate-900 mb-2">{event.name}</h3>
-                                            <div className="flex items-center gap-4">
-                                                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                                                    event.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                                                }`}>
-                                                    {event.status === 'ACTIVE' ? 'Активное' : 'Предстоящее'}
+                        {events.map((event) => (
+                            <div
+                                key={event.id}
+                                onClick={() => setSelectedEventId(event.id)}
+                                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-bold text-slate-900 mb-2">{event.name}</h3>
+                                        <div className="flex items-center gap-4 text-sm text-slate-600">
+                                            <span>{new Date(event.startDate).toLocaleDateString('ru-RU')} - {new Date(event.endDate).toLocaleDateString('ru-RU')}</span>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                                event.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                                            }`}>
+                                                {translateStatus(event.status)}
+                                            </span>
+                                            {event.displayOnHomepage && (
+                                                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+                                                    На главной
                                                 </span>
-                                                <span className="text-slate-600">
-                                                    <Users className="w-4 h-4 inline mr-1" />
-                                                    {event.participants} участников
-                                                </span>
-                                            </div>
+                                            )}
                                         </div>
-                                        <button className="px-6 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl font-semibold transition-all">
-                                            Редактировать
-                                        </button>
                                     </div>
+                                    <ChevronRight className="w-6 h-6 text-slate-400" />
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        ))}
                     </div>
                 )}
 
                 {activeTab === 'users' && (
-                    <div className="bg-white rounded-3xl shadow-xl p-8">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-6">Пользователи</h2>
+                    <div className="bg-white rounded-2xl shadow-lg p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-slate-900">Пользователи</h2>
+                            <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg transition-all">
+                                <Plus className="w-5 h-5" />
+                                Создать пользователя
+                            </button>
+                        </div>
+
+                        <div className="mb-6">
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Поиск пользователей..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
 
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-slate-100">
+                                <thead className="bg-slate-50">
                                     <tr>
-                                        <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Имя</th>
-                                        <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Роль</th>
-                                        <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Команда</th>
-                                        <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Действия</th>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Имя пользователя</th>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Имя</th>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Email</th>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Роль</th>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Действия</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {mockUsers.map((user) => (
-                                        <tr key={user.id} className="border-t border-slate-200 hover:bg-slate-50 transition-colors">
-                                            <td className="px-6 py-4 text-slate-900 font-medium">{user.name}</td>
+                                <tbody className="divide-y divide-slate-200">
+                                    {filteredParticipants.map((participant) => (
+                                        <tr key={participant.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 text-sm text-slate-900">{participant.username}</td>
+                                            <td className="px-6 py-4 text-sm font-medium text-slate-900">{participant.name}</td>
+                                            <td className="px-6 py-4 text-sm text-slate-600">{participant.email}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                                    user.role === 'MODERATOR' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                                                    participant.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
+                                                    participant.role === 'MODERATOR' ? 'bg-orange-100 text-orange-700' :
+                                                    'bg-blue-100 text-blue-700'
                                                 }`}>
-                                                    {user.role === 'MODERATOR' ? 'Модератор' : 'Пользователь'}
+                                                    {translateRole(participant.role)}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-slate-600">{user.team}</td>
                                             <td className="px-6 py-4">
-                                                <button className="text-purple-600 hover:text-purple-700 font-semibold">
+                                                <button className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1">
+                                                    <Edit className="w-4 h-4" />
                                                     Редактировать
                                                 </button>
                                             </td>
@@ -143,23 +230,11 @@ export const AdminPanel: React.FC = () => {
                     </div>
                 )}
 
-                {activeTab === 'settings' && (
-                    <div className="bg-white rounded-3xl shadow-xl p-8">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-6">Настройки системы</h2>
-                        <div className="space-y-6">
-                            <div className="p-6 bg-slate-50 rounded-2xl">
-                                <h3 className="font-bold text-slate-900 mb-2">Общие настройки</h3>
-                                <p className="text-slate-600">Настройки приложения и системы (Demo режим)</p>
-                            </div>
-                            <div className="p-6 bg-slate-50 rounded-2xl">
-                                <h3 className="font-bold text-slate-900 mb-2">Уведомления</h3>
-                                <p className="text-slate-600">Управление уведомлениями пользователей</p>
-                            </div>
-                            <div className="p-6 bg-slate-50 rounded-2xl">
-                                <h3 className="font-bold text-slate-900 mb-2">Интеграции</h3>
-                                <p className="text-slate-600">Настройка внешних интеграций</p>
-                            </div>
-                        </div>
+                {activeTab === 'bug-reports' && (
+                    <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                        <HelpCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">Нет баг-репортов</h3>
+                        <p className="text-slate-600">Все отчеты о проблемах обработаны</p>
                     </div>
                 )}
             </div>

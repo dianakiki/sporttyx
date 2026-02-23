@@ -27,7 +27,7 @@ export const Header: React.FC = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('userId');
         localStorage.removeItem('userRole');
-        navigate('/');
+        window.location.reload();
     };
 
     return (

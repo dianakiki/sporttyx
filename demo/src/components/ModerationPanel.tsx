@@ -1,42 +1,74 @@
 import React, { useState } from 'react';
-import { Eye, Check, X, AlertCircle } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Check, X, Trophy } from 'lucide-react';
+
+interface ActivityModeration {
+    id: number;
+    type: string;
+    energy: number;
+    participantName: string;
+    teamName: string;
+    photoUrls: string[];
+    createdAt: string;
+    description?: string;
+}
+
+interface ModerationStats {
+    pendingCount: number;
+    approvedByMe: number;
+    rejectedByMe: number;
+}
+
+const mockActivities: ActivityModeration[] = [
+    {
+        id: 1,
+        type: 'Бег',
+        energy: 50,
+        participantName: 'Иван Петров',
+        teamName: 'Бегуны Города',
+        photoUrls: ['https://picsum.photos/seed/mod1/800/600'],
+        createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+        description: 'Утренняя пробежка 5 км'
+    },
+    {
+        id: 2,
+        type: 'Велосипед',
+        energy: 100,
+        participantName: 'Мария Сидорова',
+        teamName: 'Велосипедисты',
+        photoUrls: ['https://picsum.photos/seed/mod2/800/600'],
+        createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+        description: 'Велопрогулка по парку'
+    }
+];
+
+const mockStats: ModerationStats = {
+    pendingCount: 2,
+    approvedByMe: 15,
+    rejectedByMe: 3
+};
 
 export const ModerationPanel: React.FC = () => {
-    const [activities, setActivities] = useState([
-        {
-            id: 1,
-            participantName: 'Иван Петров',
-            teamName: 'Бегуны Города',
-            type: 'Бег',
-            energy: 50,
-            description: 'Утренняя пробежка 5 км',
-            photoUrls: ['https://picsum.photos/seed/mod1/400/300'],
-            createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-            status: 'PENDING'
-        },
-        {
-            id: 2,
-            participantName: 'Мария Сидорова',
-            teamName: 'Велосипедисты',
-            type: 'Велосипед',
-            energy: 100,
-            description: 'Велопрогулка по парку',
-            photoUrls: ['https://picsum.photos/seed/mod2/400/300'],
-            createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-            status: 'PENDING'
-        }
-    ]);
+    const [activities, setActivities] = useState<ActivityModeration[]>(mockActivities);
+    const [stats, setStats] = useState<ModerationStats>(mockStats);
 
-    const handleApprove = (id: number) => {
-        setActivities(prev => prev.filter(a => a.id !== id));
-        alert('Активность одобрена! (Demo режим)');
+    const handleApprove = (activityId: number) => {
+        setActivities(prev => prev.filter(a => a.id !== activityId));
+        setStats(prev => ({
+            ...prev,
+            pendingCount: prev.pendingCount - 1,
+            approvedByMe: prev.approvedByMe + 1
+        }));
     };
 
-    const handleReject = (id: number) => {
+    const handleReject = (activityId: number) => {
         const reason = prompt('Укажите причину отклонения:');
         if (reason) {
-            setActivities(prev => prev.filter(a => a.id !== id));
-            alert('Активность отклонена! (Demo режим)');
+            setActivities(prev => prev.filter(a => a.id !== activityId));
+            setStats(prev => ({
+                ...prev,
+                pendingCount: prev.pendingCount - 1,
+                rejectedByMe: prev.rejectedByMe + 1
+            }));
         }
     };
 
@@ -53,48 +85,79 @@ export const ModerationPanel: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen p-6 md:p-8">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
             <div className="max-w-7xl mx-auto">
-                <div className="bg-white rounded-3xl shadow-xl p-8 mb-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <Eye className="w-8 h-8 text-white" />
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold text-slate-900 mb-2">
+                        Модерация активностей
+                    </h1>
+                    <p className="text-slate-600">
+                        Проверка и одобрение активностей участников
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white rounded-2xl shadow-lg p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-slate-600 text-sm mb-1">На модерации</p>
+                                <p className="text-3xl font-bold text-yellow-600">{stats.pendingCount}</p>
+                            </div>
+                            <Clock className="w-12 h-12 text-yellow-500" />
                         </div>
-                        <div>
-                            <h1 className="text-4xl font-bold text-slate-900">Панель модерации</h1>
-                            <p className="text-slate-600">Проверка и одобрение активностей</p>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-lg p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-slate-600 text-sm mb-1">Одобрено мной</p>
+                                <p className="text-3xl font-bold text-green-600">{stats.approvedByMe}</p>
+                            </div>
+                            <CheckCircle className="w-12 h-12 text-green-500" />
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-lg p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-slate-600 text-sm mb-1">Отклонено мной</p>
+                                <p className="text-3xl font-bold text-red-600">{stats.rejectedByMe}</p>
+                            </div>
+                            <XCircle className="w-12 h-12 text-red-500" />
                         </div>
                     </div>
                 </div>
 
-                {activities.length === 0 ? (
-                    <div className="bg-white rounded-3xl shadow-xl p-12 text-center">
-                        <AlertCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Нет активностей на модерации</h2>
-                        <p className="text-slate-600">Все активности проверены</p>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        {activities.map((activity) => (
-                            <div key={activity.id} className="bg-white rounded-3xl shadow-xl p-8">
-                                <div className="flex items-start gap-6">
+                <div className="space-y-4">
+                    {activities.length === 0 ? (
+                        <div className="bg-white rounded-2xl p-12 text-center">
+                            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">
+                                Нет активностей на модерации
+                            </h3>
+                            <p className="text-slate-600">
+                                Все активности проверены!
+                            </p>
+                        </div>
+                    ) : (
+                        activities.map(activity => (
+                            <div key={activity.id} className="bg-white rounded-2xl shadow-lg p-6">
+                                <div className="flex flex-col md:flex-row gap-6">
                                     {activity.photoUrls && activity.photoUrls.length > 0 && (
                                         <div className="flex-shrink-0">
                                             <img
                                                 src={activity.photoUrls[0]}
                                                 alt="Activity"
-                                                className="w-64 h-48 object-cover rounded-2xl"
+                                                className="w-full md:w-64 h-48 object-cover rounded-xl"
                                             />
                                         </div>
                                     )}
 
                                     <div className="flex-1">
                                         <div className="flex items-start justify-between mb-4">
-                                            <div>
-                                                <h3 className="text-2xl font-bold text-slate-900 mb-2">
+                                            <div className="flex-1">
+                                                <h3 className="text-xl font-bold text-slate-900 mb-2">
                                                     {activity.type}
                                                 </h3>
-                                                <div className="flex items-center gap-4 text-slate-600 mb-2">
+                                                <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 mb-2">
                                                     <span className="font-semibold">{activity.participantName}</span>
                                                     <span>•</span>
                                                     <span>{activity.teamName}</span>
@@ -102,13 +165,14 @@ export const ModerationPanel: React.FC = () => {
                                                     <span>{formatTimeAgo(activity.createdAt)}</span>
                                                 </div>
                                             </div>
-                                            <div className="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl font-bold">
-                                                {activity.energy} баллов
+                                            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl">
+                                                <Trophy className="w-5 h-5 text-blue-600" />
+                                                <span className="font-bold text-blue-600">{activity.energy}</span>
                                             </div>
                                         </div>
 
                                         {activity.description && (
-                                            <p className="text-slate-700 mb-6 p-4 bg-slate-50 rounded-xl">
+                                            <p className="text-slate-700 mb-4 p-3 bg-slate-50 rounded-lg text-sm">
                                                 {activity.description}
                                             </p>
                                         )}
@@ -116,14 +180,14 @@ export const ModerationPanel: React.FC = () => {
                                         <div className="flex gap-3">
                                             <button
                                                 onClick={() => handleApprove(activity.id)}
-                                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow-lg transition-all"
                                             >
                                                 <Check className="w-5 h-5" />
                                                 Одобрить
                                             </button>
                                             <button
                                                 onClick={() => handleReject(activity.id)}
-                                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold shadow-lg transition-all"
                                             >
                                                 <X className="w-5 h-5" />
                                                 Отклонить
@@ -132,9 +196,9 @@ export const ModerationPanel: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                )}
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );

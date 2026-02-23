@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, MessageCircle, Heart, Flame, ThumbsUp } from 'lucide-react';
+import { Trophy, MessageCircle } from 'lucide-react';
+import { ReactionPanel } from './ReactionPanel';
 
 interface ActivityCardProps {
     activity: {
@@ -98,12 +99,20 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         return emojiMap[type] || '🏃';
     };
 
+    const handleReact = (reactionType: string) => {
+        if (onReact) {
+            onReact(activity.id, reactionType);
+        }
+    };
+
     return (
         <div
-            onClick={() => navigate(`/activity/${activity.id}`)}
             className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer transform hover:-translate-y-1"
         >
-            <div className="p-4 flex items-center justify-between border-b border-slate-100">
+            <div 
+                onClick={() => navigate(`/activity/${activity.id}`)}
+                className="p-4 flex items-center justify-between border-b border-slate-100"
+            >
                 <div className="flex items-center gap-3">
                     {activity.teamBasedCompetition && activity.teamAvatarUrl ? (
                         <img
@@ -161,72 +170,78 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                 </div>
             </div>
 
-            {photos.length > 0 ? (
-                <div className="relative">
-                    {photos.length === 1 ? (
-                        <div className="relative h-96">
-                            <img
-                                src={photos[0]}
-                                alt="Activity photo"
-                                className="w-full h-full object-cover"
-                            />
+            <div onClick={() => navigate(`/activity/${activity.id}`)}>
+                {photos.length > 0 ? (
+                    <div className="relative">
+                        {photos.length === 1 ? (
+                            <div className="relative h-96">
+                                <img
+                                    src={photos[0]}
+                                    alt="Activity photo"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-1 h-96">
+                                {photos.slice(0, 4).map((photo, index) => (
+                                    <div key={index} className="relative overflow-hidden">
+                                        <img
+                                            src={photo}
+                                            alt={`Photo ${index + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        {index === 3 && photos.length > 4 && (
+                                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                                <span className="text-white text-4xl font-bold">+{photos.length - 4}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <div className="absolute top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 z-10">
+                            <Trophy className="w-5 h-5" />
+                            <span className="font-bold text-lg">{activity.finalPoints ?? activity.energy}</span>
+                            <span className="text-sm">баллов</span>
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-2 gap-1 h-96">
-                            {photos.slice(0, 4).map((photo, index) => (
-                                <div key={index} className="relative overflow-hidden">
-                                    <img
-                                        src={photo}
-                                        alt={`Photo ${index + 1}`}
-                                        className="w-full h-full object-cover"
-                                    />
-                                    {index === 3 && photos.length > 4 && (
-                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                            <span className="text-white text-4xl font-bold">+{photos.length - 4}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                    </div>
+                ) : (
+                    <div className="relative h-64 bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="text-8xl mb-4">{getActivityEmoji(activity.type)}</div>
+                            <div className="text-2xl font-bold text-slate-700">{activity.type}</div>
                         </div>
-                    )}
-                    <div className="absolute top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 z-10">
-                        <Trophy className="w-5 h-5" />
-                        <span className="font-bold text-lg">{activity.finalPoints ?? activity.energy}</span>
-                        <span className="text-sm">баллов</span>
+                        <div className="absolute top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2">
+                            <Trophy className="w-5 h-5" />
+                            <span className="font-bold text-lg">{activity.finalPoints ?? activity.energy}</span>
+                            <span className="text-sm">баллов</span>
+                        </div>
                     </div>
-                </div>
-            ) : (
-                <div className="relative h-64 bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 flex items-center justify-center">
-                    <div className="text-center">
-                        <div className="text-8xl mb-4">{getActivityEmoji(activity.type)}</div>
-                        <div className="text-2xl font-bold text-slate-700">{activity.type}</div>
-                    </div>
-                    <div className="absolute top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2">
-                        <Trophy className="w-5 h-5" />
-                        <span className="font-bold text-lg">{activity.finalPoints ?? activity.energy}</span>
-                        <span className="text-sm">баллов</span>
-                    </div>
-                </div>
-            )}
+                )}
+            </div>
 
             {showSocialFeatures && (
                 <div className="p-4 space-y-3">
                     {activity.description && (
-                        <div className="text-slate-700 text-sm pb-2 border-b border-slate-100">
+                        <div 
+                            onClick={() => navigate(`/activity/${activity.id}`)}
+                            className="text-slate-700 text-sm pb-2 border-b border-slate-100"
+                        >
                             {activity.description}
                         </div>
                     )}
                     
                     <div className="flex items-center gap-4 pt-2">
-                        <button className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                            <Heart className="w-5 h-5" />
-                            <span>{activity.reactionCounts?.LIKE || 0}</span>
-                        </button>
-                        <button className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-all">
-                            <Flame className="w-5 h-5" />
-                            <span>{activity.reactionCounts?.FIRE || 0}</span>
-                        </button>
-                        <button className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
+                        <ReactionPanel
+                            activityId={activity.id}
+                            reactionCounts={activity.reactionCounts}
+                            userReaction={activity.userReaction}
+                            onReact={handleReact}
+                        />
+                        <button 
+                            onClick={() => navigate(`/activity/${activity.id}`)}
+                            className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all ml-auto"
+                        >
                             <MessageCircle className="w-5 h-5" />
                             <span>{activity.commentCount || 0}</span>
                         </button>
