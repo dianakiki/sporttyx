@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Users, User, Bell, Plus, LogOut } from 'lucide-react';
+import { Home, Users, User, Bell, Plus, LogOut, Shield } from 'lucide-react';
+import { NotificationsModal } from './NotificationsModal';
 
 export const Header: React.FC = () => {
     const navigate = useNavigate();
@@ -8,6 +9,13 @@ export const Header: React.FC = () => {
     const [hasJoinedEvent] = useState(true);
     const [isTeamBasedEvent] = useState(true);
     const [userTeamId] = useState(1);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [userRole, setUserRole] = useState<string>('USER');
+
+    useEffect(() => {
+        const role = localStorage.getItem('userRole') || 'USER';
+        setUserRole(role);
+    }, []);
 
     const handleMyTeamClick = () => {
         if (userTeamId) {
@@ -18,6 +26,7 @@ export const Header: React.FC = () => {
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('userId');
+        localStorage.removeItem('userRole');
         navigate('/');
     };
 
@@ -45,6 +54,26 @@ export const Header: React.FC = () => {
                                 <span className="hidden md:inline">Добавить активность</span>
                             </button>
                         )}
+
+                        {userRole === 'ADMIN' && (
+                            <button
+                                onClick={() => navigate('/admin')}
+                                className="flex items-center gap-2 px-4 py-2.5 text-purple-700 hover:text-purple-600 hover:bg-purple-50 rounded-xl font-semibold transition-all"
+                            >
+                                <Shield className="w-5 h-5" />
+                                <span className="hidden md:inline">Администрирование</span>
+                            </button>
+                        )}
+
+                        {(userRole === 'MODERATOR' || userRole === 'ADMIN') && (
+                            <button
+                                onClick={() => navigate('/moderation')}
+                                className="flex items-center gap-2 px-4 py-2.5 text-orange-700 hover:text-orange-600 hover:bg-orange-50 rounded-xl font-semibold transition-all"
+                            >
+                                <Shield className="w-5 h-5" />
+                                <span className="hidden md:inline">Модерация</span>
+                            </button>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -59,6 +88,7 @@ export const Header: React.FC = () => {
                         )}
 
                         <button
+                            onClick={() => setIsNotificationsOpen(true)}
                             className="relative w-12 h-12 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center transition-all hover:shadow-md"
                             title="Уведомления"
                         >
@@ -88,6 +118,11 @@ export const Header: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            <NotificationsModal
+                isOpen={isNotificationsOpen}
+                onClose={() => setIsNotificationsOpen(false)}
+            />
         </header>
     );
 };
