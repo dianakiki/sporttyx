@@ -3,7 +3,7 @@ FROM maven:3.9-eclipse-temurin-11 as build
 
 WORKDIR /app
 
-COPY settings.xml /root/.m2/settings.xml
+#COPY settings.xml /root/.m2/settings.xml
 
 COPY backend/pom.xml .
 RUN mvn dependency:go-offline -B
