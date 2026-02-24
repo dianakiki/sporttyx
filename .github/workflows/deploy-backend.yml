@@ -3,7 +3,7 @@ name: Deploy Sporttyx Backend
 on:
   push:
     branches: [ "main" ]
-    workflow_dispatch: # Позволяет запустить деплой вручную из вкладки Actions
+  workflow_dispatch: # Позволяет запустить вручную кнопкой в Actions
 
 jobs:
   build:
@@ -12,8 +12,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Диагностика: выведет структуру папок, чтобы исключить ошибку "No such file"
-      - name: List files
+      # Показывает структуру, чтобы мы видели, что скачалось
+      - name: Diagnostic List
         run: ls -R
 
       - name: Set up JDK 17
@@ -23,21 +23,31 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # Собираем JAR. Если папка называется точно "sporttyx-backend", всё сработает
+      # Сами находим pom.xml и собираем проект там, где он есть
       - name: Build with Maven
-        working-directory: sporttyx-backend
-        run: mvn clean package -DskipTests
+        run: |
+          POM_PATH=$(find . -name "pom.xml" -not -path "*/target/*" | head -n 1)
+          if [ -z "$POM_PATH" ]; then echo "Error: pom.xml not found"; exit 1; fi
+          DIR_PATH=$(dirname "$POM_PATH")
+          echo "Found pom.xml in: $DIR_PATH"
+          cd "$DIR_PATH"
+          mvn clean package -DskipTests
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Собираем Docker образ, используя папку бэкенда как контекст
+      # Сами находим dockerfile и собираем образ
       - name: Build Docker image
         run: |
+          DOCKER_FILE=$(find . -name "dockerfile" -o -name "Dockerfile" | head -n 1)
+          if [ -z "$DOCKER_FILE" ]; then echo "Error: dockerfile not found"; exit 1; fi
+          CONTEXT_DIR=$(dirname "$DOCKER_FILE")
+          echo "Using Dockerfile at: $DOCKER_FILE"
+          
           docker build \
             -t sporttyx-backend:latest \
-            -f sporttyx-backend/dockerfile \
-            sporttyx-backend
+            -f "$DOCKER_FILE" \
+            "$CONTEXT_DIR"
           docker save sporttyx-backend:latest > sporttyx-image.tar
 
       - name: Upload artifact
@@ -58,10 +68,9 @@ jobs:
 
       - name: Load Docker image and Run
         run: |
-          # Загружаем образ на ваш VPS
           docker load < sporttyx-image.tar
           
-          # Останавливаем старый контейнер, если он запущен
+          # Очистка старого контейнера
           docker stop sporttyx-app || true
           docker rm sporttyx-app || true
           
@@ -72,5 +81,4 @@ jobs:
             -p 8080:8080 \
             sporttyx-backend:latest
           
-          # Очистка системы от мусора
           docker image prune -f
