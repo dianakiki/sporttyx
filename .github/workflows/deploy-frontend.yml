@@ -1,10 +1,9 @@
-name: Deploy Frontend
+name: Deploy Sporttyx Frontend
 
 on:
   push:
     branches: [ "main" ]
-    # Запускать только если изменились файлы в папке frontend
-    workflow_dispatch: # Позволяет запустить деплой вручную из вкладки Actions
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,17 +12,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. Настройка Node.js для сборки фронтенда
+      # 1. Автоматический поиск путей
+      - name: Find paths
+        id: paths
+        run: |
+          # Ищем папку, где лежит package.json фронтенда
+          PACKAGE_JSON=$(find . -name "package.json" -not -path "*/node_modules/*" | grep "frontend" | head -n 1)
+          FRONTEND_DIR=$(dirname "$PACKAGE_JSON")
+          echo "FRONTEND_DIR=$FRONTEND_DIR" >> $GITHUB_ENV
+          
+          # Ищем dockerfile внутри этой папки
+          DOCKER_FILE=$(find "$FRONTEND_DIR" -name "dockerfile" -o -name "Dockerfile" | head -n 1)
+          echo "DOCKER_FILE=$DOCKER_FILE" >> $GITHUB_ENV
+          echo "Найдена папка фронтенда: $FRONTEND_DIR"
+          echo "Найден Dockerfile: $DOCKER_FILE"
+
+      # 2. Настройка Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: './frontend/package-lock.json'
+          cache-dependency-path: "${{ env.FRONTEND_DIR }}/package-lock.json"
 
-      # 2. Установка зависимостей и сборка проекта
+      # 3. Сборка статики (с игнорированием ошибок линтера)
       - name: Build Frontend
-        working-directory: ./frontend
+        working-directory: ${{ env.FRONTEND_DIR }}
         run: |
           npm install
           CI=false npm run build
@@ -31,14 +45,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 3. Сборка Docker-образа фронтенда
+      # 4. Сборка Docker-образа
       - name: Build Docker image
         run: |
-          # Используем контекст папки frontend
           docker build \
             -t sporttyx-frontend:latest \
-            -f ./frontend/dockerfile \
-            ./frontend
+            -f ${{ env.DOCKER_FILE }} \
+            ${{ env.FRONTEND_DIR }}
           docker save sporttyx-frontend:latest > frontend-image.tar
 
       - name: Upload artifact
@@ -60,11 +73,10 @@ jobs:
       - name: Load Docker image and Run
         run: |
           docker load < frontend-image.tar
-          
           docker stop sporttyx-frontend || true
           docker rm sporttyx-frontend || true
           
-          # Запускаем на порту 3000 (внешний) -> 80 (внутри контейнера Nginx)
+          # Запускаем на порту 3000
           docker run -d \
             --name sporttyx-frontend \
             --restart always \
