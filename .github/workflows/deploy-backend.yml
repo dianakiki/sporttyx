@@ -49,12 +49,23 @@ jobs:
 
       - name: Load Docker image and Run
         run: |
+          # 1. Загружаем образ из артефакта
           docker load < sporttyx-image.tar
+          
+          # 2. Удаляем старые контейнеры (и старое, и новое имя для чистоты)
           docker stop sporttyx-app || true
           docker rm sporttyx-app || true
+          docker stop backend || true
+          docker rm backend || true
+          
+          # 3. Запускаем с правильным именем и подключением к сети/базе
           docker run -d \
-            --name sporttyx-app \
+            --name backend \
+            --network sporttyx-net \
             --restart always \
             -p 8080:8080 \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://db-postgres:5432/sporttyx_db \
             sporttyx-backend:latest
+            
+          # 4. Чистим мусор (старые слои образов)
           docker image prune -f
