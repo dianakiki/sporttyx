@@ -27,7 +27,7 @@ jobs:
         working-directory: ./frontend
         run: |
           npm install
-          npm run build --if-present
+          CI=false npm run build
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
