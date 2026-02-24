@@ -3,8 +3,7 @@ name: Deploy Sporttyx Backend
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - 'sporttyx-backend/**' # Запускать только при изменениях в бэкенде
+    workflow_dispatch: # Позволяет запустить деплой вручную из вкладки Actions
 
 jobs:
   build:

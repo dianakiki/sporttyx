@@ -4,8 +4,7 @@ on:
   push:
     branches: [ "main" ]
     # Запускать только если изменились файлы в папке frontend
-    paths:
-      - 'frontend/**'
+    workflow_dispatch: # Позволяет запустить деплой вручную из вкладки Actions
 
 jobs:
   build:
