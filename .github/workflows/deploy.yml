@@ -11,13 +11,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 1. Готовим Java (без этого шага не будет файла в папке target)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # 2. Собираем сам проект в .jar файл
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Сборка образа и сохранение в файл (артефакт)
+      # 3. Собираем Docker-образ (теперь он найдет и файл 'dockerfile', и готовый .jar)
       - name: Build Docker image
         run: |
-          docker build -t sporttyx-backend:latest .
+          docker build -t sporttyx-backend:latest -f dockerfile .
           docker save sporttyx-backend:latest > sporttyx-image.tar
 
       - name: Upload artifact
@@ -38,19 +50,18 @@ jobs:
 
       - name: Load Docker image and Run
         run: |
-          # Загружаем образ из архива
           docker load < sporttyx-image.tar
           
           # Останавливаем старый контейнер, если он есть
           docker stop sporttyx-app || true
           docker rm sporttyx-app || true
           
-          # Запускаем новый (проверьте ваши порты, здесь для примера 8080:8080)
+          # Запускаем новый на порту 8080
           docker run -d \
             --name sporttyx-app \
             --restart always \
             -p 8080:8080 \
             sporttyx-backend:latest
-            
-          # Очистка старых ненужных образов
+          
+          # Удаляем старые ненужные слои образов
           docker image prune -f
