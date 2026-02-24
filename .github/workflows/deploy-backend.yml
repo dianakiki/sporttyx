@@ -3,6 +3,8 @@ name: Deploy Sporttyx Backend
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'sporttyx-backend/**' # Запускать только при изменениях в бэкенде
 
 jobs:
   build:
@@ -11,7 +13,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. Настройка окружения
+      # Диагностика: выведет структуру папок, чтобы исключить ошибку "No such file"
+      - name: List files
+        run: ls -R
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -19,24 +24,21 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 2. Сборка Java-кода. 
-      # Мы заходим в папку sporttyx-backend, чтобы найти там pom.xml
+      # Собираем JAR. Если папка называется точно "sporttyx-backend", всё сработает
       - name: Build with Maven
-        working-directory: ./sporttyx-backend
+        working-directory: sporttyx-backend
         run: mvn clean package -DskipTests
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 3. Сборка Docker образа. 
-      # ВАЖНО: контекст сборки (последняя точка) — это папка sporttyx-backend, 
-      # так как ваш dockerfile делает COPY target/*.jar, а папка target лежит там.
+      # Собираем Docker образ, используя папку бэкенда как контекст
       - name: Build Docker image
         run: |
           docker build \
             -t sporttyx-backend:latest \
-            -f ./sporttyx-backend/dockerfile \
-            ./sporttyx-backend
+            -f sporttyx-backend/dockerfile \
+            sporttyx-backend
           docker save sporttyx-backend:latest > sporttyx-image.tar
 
       - name: Upload artifact
@@ -57,16 +59,19 @@ jobs:
 
       - name: Load Docker image and Run
         run: |
+          # Загружаем образ на ваш VPS
           docker load < sporttyx-image.tar
           
+          # Останавливаем старый контейнер, если он запущен
           docker stop sporttyx-app || true
           docker rm sporttyx-app || true
           
-          # Оставляем порт 8080 для бэкенда
+          # Запуск на порту 8080
           docker run -d \
             --name sporttyx-app \
             --restart always \
             -p 8080:8080 \
             sporttyx-backend:latest
           
+          # Очистка системы от мусора
           docker image prune -f
