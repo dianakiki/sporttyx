@@ -1,0 +1,75 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [ "main" ]
+    # Запускать только если изменились файлы в папке frontend
+    paths:
+      - 'frontend/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 1. Настройка Node.js для сборки фронтенда
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+
+      # 2. Установка зависимостей и сборка проекта
+      - name: Build Frontend
+        working-directory: ./frontend
+        run: |
+          npm install
+          npm run build --if-present
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. Сборка Docker-образа фронтенда
+      - name: Build Docker image
+        run: |
+          # Используем контекст папки frontend
+          docker build \
+            -t sporttyx-frontend:latest \
+            -f ./frontend/dockerfile \
+            ./frontend
+          docker save sporttyx-frontend:latest > frontend-image.tar
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-image
+          path: frontend-image.tar
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-image
+
+      - name: Load Docker image and Run
+        run: |
+          docker load < frontend-image.tar
+          
+          docker stop sporttyx-frontend || true
+          docker rm sporttyx-frontend || true
+          
+          # Запускаем на порту 3000 (внешний) -> 80 (внутри контейнера Nginx)
+          docker run -d \
+            --name sporttyx-frontend \
+            --restart always \
+            -p 3000:80 \
+            sporttyx-frontend:latest
+          
+          docker image prune -f
