@@ -75,3 +75,7 @@ databaseChangeLog:
       file: db/changelog/changes/038-create-notification-templates-table.yaml
   - include:
       file: db/changelog/changes/039-create-event-invitations-table.yaml
+  - include:
+      file: db/changelog/changes/040-add-image-url-to-events.yaml
+  - include:
+      file: db/changelog/changes/041-create-event-news-table.yaml

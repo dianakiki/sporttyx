@@ -67,6 +67,9 @@ public class Event {
     @Column(name = "logo_url")
     private String logoUrl;
     
+    @Column(name = "image_url")
+    private String imageUrl;
+    
     @Column(name = "primary_color", length = 7)
     private String primaryColor;
     

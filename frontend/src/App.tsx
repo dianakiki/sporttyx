@@ -19,6 +19,7 @@ import { ActivityFeed } from './components/ActivityFeed';
 import { AdminPanel } from './components/AdminPanel';
 import { HomePage } from './components/HomePage';
 import { EventDetailTabs } from './components/EventDetailTabs';
+import { EventCard } from './components/EventCard';
 import { ModerationPanel } from './components/ModerationPanel';
 import { MainLayout } from './layouts/MainLayout';
 
@@ -169,6 +170,16 @@ function App() {
             <PrivateRoute>
               <MainLayout>
                 <AdminPanel />
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/events/:eventId"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <EventCard />
               </MainLayout>
             </PrivateRoute>
           }

@@ -153,6 +153,9 @@ public class EventService {
         if (request.getLogoUrl() != null) {
             event.setLogoUrl(request.getLogoUrl());
         }
+        if (request.getImageUrl() != null) {
+            event.setImageUrl(request.getImageUrl());
+        }
         if (request.getPrimaryColor() != null) {
             event.setPrimaryColor(request.getPrimaryColor());
         }
@@ -228,6 +231,7 @@ public class EventService {
                 event.getCustomScoringRules(),
                 event.getBannerImageUrl(),
                 event.getLogoUrl(),
+                event.getImageUrl(),
                 event.getPrimaryColor(),
                 event.getNotificationsEnabled(),
                 event.getReminderDaysBefore(),

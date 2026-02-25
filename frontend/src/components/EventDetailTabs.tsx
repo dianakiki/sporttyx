@@ -8,6 +8,7 @@ import { ActivityTypeModal, ActivityTypeFormData } from './ActivityTypeModal';
 import { NotificationModal } from './NotificationModal';
 import EventInvitationManager from './EventInvitationManager';
 import EventInvitationStats from './EventInvitationStats';
+import { EventDescriptionEdit } from './EventDescriptionEdit';
 
 interface Event {
     id: number;
@@ -74,6 +75,7 @@ export const EventDetailTabs: React.FC = () => {
     const [teamParticipants, setTeamParticipants] = useState<any[]>([]);
     const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
     const [availableParticipants, setAvailableParticipants] = useState<any[]>([]);
+    const [showDescriptionEditModal, setShowDescriptionEditModal] = useState(false);
 
     useEffect(() => {
         if (eventId) {
@@ -586,28 +588,37 @@ export const EventDetailTabs: React.FC = () => {
                     <div className="bg-white rounded-3xl shadow-xl p-8">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-slate-900">Настройки мероприятия</h2>
-                            <button
-                                onClick={() => {
-                                    if (isEditing) {
-                                        handleSaveEvent();
-                                    } else {
-                                        setIsEditing(true);
-                                    }
-                                }}
-                                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all flex items-center gap-2"
-                            >
-                                {isEditing ? (
-                                    <>
-                                        <Save className="w-5 h-5" />
-                                        Сохранить
-                                    </>
-                                ) : (
-                                    <>
-                                        <Edit className="w-5 h-5" />
-                                        Редактировать
-                                    </>
-                                )}
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowDescriptionEditModal(true)}
+                                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-purple-700 transition-all flex items-center gap-2"
+                                >
+                                    <Edit className="w-5 h-5" />
+                                    Редактирование описания
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (isEditing) {
+                                            handleSaveEvent();
+                                        } else {
+                                            setIsEditing(true);
+                                        }
+                                    }}
+                                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all flex items-center gap-2"
+                                >
+                                    {isEditing ? (
+                                        <>
+                                            <Save className="w-5 h-5" />
+                                            Сохранить
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Edit className="w-5 h-5" />
+                                            Редактировать
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
 
                         {isEditing ? (
@@ -1586,6 +1597,14 @@ export const EventDetailTabs: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Event Description Edit Modal */}
+                <EventDescriptionEdit
+                    eventId={Number(eventId)}
+                    isOpen={showDescriptionEditModal}
+                    onClose={() => setShowDescriptionEditModal(false)}
+                    onSuccess={fetchData}
+                />
             </div>
         </div>
     );

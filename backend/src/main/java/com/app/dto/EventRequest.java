@@ -26,6 +26,7 @@ public class EventRequest {
     private String customScoringRules;
     private String bannerImageUrl;
     private String logoUrl;
+    private String imageUrl;
     private String primaryColor;
     private Boolean notificationsEnabled;
     private Integer reminderDaysBefore;

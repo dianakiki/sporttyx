@@ -367,7 +367,8 @@ export const ParticipantProfile: React.FC = () => {
                             {userEvents.map((event) => (
                                 <div
                                     key={event.id}
-                                    className="border-2 border-slate-200 rounded-2xl p-5 hover:border-blue-300 transition-all"
+                                    onClick={() => navigate(`/events/${event.id}`)}
+                                    className="border-2 border-slate-200 rounded-2xl p-5 hover:border-blue-300 transition-all cursor-pointer"
                                 >
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex-1">
