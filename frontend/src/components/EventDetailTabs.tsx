@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Settings, Activity as ActivityIcon, Gift, UserCheck, Users, Upload, Search, Edit, Save, Plus, Trash2, UserPlus, X, Bell, Send } from 'lucide-react';
+import { Settings, Activity as ActivityIcon, Gift, UserCheck, Users, Upload, Search, Edit, Save, Plus, Trash2, UserPlus, X, Bell, Send, Link } from 'lucide-react';
 import { translateDashboardType } from '../utils/translations';
 import axiosInstance from '../api/axiosConfig';
 import { BonusManagement } from './BonusManagement';
 import { ActivityTypeModal, ActivityTypeFormData } from './ActivityTypeModal';
 import { NotificationModal } from './NotificationModal';
+import EventInvitationManager from './EventInvitationManager';
+import EventInvitationStats from './EventInvitationStats';
 
 interface Event {
     id: number;
@@ -36,7 +38,7 @@ interface ActivityType {
 
 export const EventDetailTabs: React.FC = () => {
     const { eventId } = useParams<{ eventId: string }>();
-    const [activeTab, setActiveTab] = useState<'settings' | 'activities' | 'bonuses' | 'participants' | 'notifications'>('settings');
+    const [activeTab, setActiveTab] = useState<'settings' | 'activities' | 'bonuses' | 'participants' | 'notifications' | 'invitations'>('settings');
     const [event, setEvent] = useState<Event | null>(null);
     const [teams, setTeams] = useState<Team[]>([]);
     const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
@@ -564,6 +566,17 @@ export const EventDetailTabs: React.FC = () => {
                         >
                             <Bell className="w-5 h-5" />
                             Уведомления
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('invitations')}
+                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
+                                activeTab === 'invitations'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-slate-600 hover:text-blue-600'
+                            }`}
+                        >
+                            <Link className="w-5 h-5" />
+                            Приглашения
                         </button>
                     </div>
                 </div>
@@ -1558,6 +1571,18 @@ export const EventDetailTabs: React.FC = () => {
                                     )}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Invitations Tab */}
+                {activeTab === 'invitations' && (
+                    <div className="space-y-6">
+                        <div className="bg-white rounded-3xl shadow-xl p-8">
+                            <EventInvitationManager eventId={Number(eventId)} eventName={event.name} />
+                        </div>
+                        <div className="bg-white rounded-3xl shadow-xl p-8">
+                            <EventInvitationStats eventId={Number(eventId)} />
                         </div>
                     </div>
                 )}
