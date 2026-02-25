@@ -46,6 +46,8 @@ jobs:
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            # Создаем сеть, если её нет
+            docker network create sporttyx-net || true
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             docker pull ghcr.io/${{ github.repository }}-backend:latest
