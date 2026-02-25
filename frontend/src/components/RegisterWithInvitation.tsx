@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { UserPlus, Mail, Phone, User, Lock, Calendar } from 'lucide-react';
 import {
   eventInvitationApi,
   EventInvitationResponse,
   RegisterWithInvitationRequest,
 } from '../api/eventInvitationApi';
-import './RegisterWithInvitation.css';
+import { Input } from './ui/Input';
+import { Button } from './ui/Button';
 
 const RegisterWithInvitation: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -52,17 +54,42 @@ const RegisterWithInvitation: React.FC = () => {
     e.preventDefault();
     
     if (!formData.username || !formData.password || !formData.name) {
-      alert('Пожалуйста, заполните все обязательные поля');
+      setError('Пожалуйста, заполните все обязательные поля');
       return;
     }
 
     try {
       setSubmitting(true);
-      await eventInvitationApi.registerWithInvitation(formData);
-      alert('Регистрация успешна! Вы автоматически добавлены в мероприятие. Теперь вы можете войти в систему.');
-      navigate('/login');
+      setError(null);
+      const response = await eventInvitationApi.registerWithInvitation(formData);
+      
+      // Автоматическая авторизация после регистрации
+      if (response.token && response.userId) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('userId', response.userId.toString());
+        navigate('/');
+      } else {
+        // Если токен не вернулся, пытаемся авторизоваться
+        const loginResponse = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            username: formData.username, 
+            password: formData.password 
+          }),
+        });
+        
+        if (loginResponse.ok) {
+          const loginData = await loginResponse.json();
+          localStorage.setItem('token', loginData.token);
+          localStorage.setItem('userId', loginData.userId);
+          navigate('/');
+        } else {
+          navigate('/login');
+        }
+      }
     } catch (err: any) {
-      alert(err.response?.data || 'Ошибка регистрации. Попробуйте снова.');
+      setError(err.response?.data || 'Ошибка регистрации. Попробуйте снова.');
     } finally {
       setSubmitting(false);
     }
@@ -70,10 +97,10 @@ const RegisterWithInvitation: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="register-invitation-page">
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Загрузка приглашения...</p>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-slate-600 text-lg">Загрузка приглашения...</p>
         </div>
       </div>
     );
@@ -81,11 +108,14 @@ const RegisterWithInvitation: React.FC = () => {
 
   if (error || !invitation) {
     return (
-      <div className="register-invitation-page">
-        <div className="error-container">
-          <h2>Ошибка</h2>
-          <p>{error || 'Приглашение не найдено'}</p>
-          <button onClick={() => navigate('/')}>На главную</button>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 rounded-full mb-6">
+            <span className="text-4xl">❌</span>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Ошибка</h2>
+          <p className="text-slate-600 mb-6">{error || 'Приглашение не найдено'}</p>
+          <Button onClick={() => navigate('/')}>На главную</Button>
         </div>
       </div>
     );
@@ -93,11 +123,14 @@ const RegisterWithInvitation: React.FC = () => {
 
   if (invitation.isExpired) {
     return (
-      <div className="register-invitation-page">
-        <div className="error-container">
-          <h2>Приглашение истекло</h2>
-          <p>Срок действия этого приглашения истек.</p>
-          <button onClick={() => navigate('/')}>На главную</button>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-orange-100 rounded-full mb-6">
+            <Calendar className="w-10 h-10 text-orange-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Приглашение истекло</h2>
+          <p className="text-slate-600 mb-6">Срок действия этого приглашения истек.</p>
+          <Button onClick={() => navigate('/')}>На главную</Button>
         </div>
       </div>
     );
@@ -105,11 +138,14 @@ const RegisterWithInvitation: React.FC = () => {
 
   if (invitation.isMaxedOut) {
     return (
-      <div className="register-invitation-page">
-        <div className="error-container">
-          <h2>Приглашение исчерпано</h2>
-          <p>Это приглашение достигло максимального количества использований.</p>
-          <button onClick={() => navigate('/')}>На главную</button>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 rounded-full mb-6">
+            <span className="text-4xl">⚠️</span>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Приглашение исчерпано</h2>
+          <p className="text-slate-600 mb-6">Это приглашение достигло максимального количества использований.</p>
+          <Button onClick={() => navigate('/')}>На главную</Button>
         </div>
       </div>
     );
@@ -117,101 +153,114 @@ const RegisterWithInvitation: React.FC = () => {
 
   if (!invitation.isActive) {
     return (
-      <div className="register-invitation-page">
-        <div className="error-container">
-          <h2>Приглашение неактивно</h2>
-          <p>Это приглашение было деактивировано.</p>
-          <button onClick={() => navigate('/')}>На главную</button>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-slate-100 rounded-full mb-6">
+            <span className="text-4xl">🚫</span>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Приглашение неактивно</h2>
+          <p className="text-slate-600 mb-6">Это приглашение было деактивировано.</p>
+          <Button onClick={() => navigate('/')}>На главную</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="register-invitation-page">
-      <div className="register-container">
-        <div className="invitation-info-box">
-          <h2>Вы приглашены!</h2>
-          <div className="event-info">
-            <h3>{invitation.eventName}</h3>
-            {invitation.description && <p className="invitation-description">{invitation.description}</p>}
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="w-full max-w-md">
+        {/* Invitation Info Card */}
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-t-3xl shadow-xl p-8 text-center text-white">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
+            <Mail className="w-8 h-8 text-white" />
           </div>
-          <p className="info-text">
-            Зарегистрируйтесь, чтобы автоматически стать участником этого мероприятия.
+          <h2 className="text-3xl font-bold mb-3">Вы приглашены!</h2>
+          <div className="bg-white/10 rounded-2xl p-4 mb-4">
+            <h3 className="text-xl font-bold mb-2">{invitation.eventName}</h3>
+            {invitation.description && (
+              <p className="text-blue-100 text-sm">{invitation.description}</p>
+            )}
+          </div>
+          <p className="text-blue-100">
+            Зарегистрируйтесь, чтобы автоматически стать участником этого мероприятия
           </p>
         </div>
 
-        <form className="register-form" onSubmit={handleSubmit}>
-          <h3>Регистрация</h3>
-          
-          <div className="form-group">
-            <label>
-              Логин <span className="required">*</span>
-            </label>
-            <input
+        {/* Registration Form */}
+        <div className="bg-white rounded-b-3xl shadow-2xl p-10">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl mb-4 shadow-lg">
+              <UserPlus className="w-8 h-8 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900">Регистрация</h3>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <Input
+              label="Логин"
               type="text"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              required
               placeholder="Введите логин"
+              required
             />
-          </div>
 
-          <div className="form-group">
-            <label>
-              Пароль <span className="required">*</span>
-            </label>
-            <input
+            <Input
+              label="Пароль"
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="Минимум 6 символов"
               required
-              placeholder="Введите пароль"
-              minLength={6}
             />
-          </div>
 
-          <div className="form-group">
-            <label>
-              Имя <span className="required">*</span>
-            </label>
-            <input
+            <Input
+              label="Имя"
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Ваше имя"
               required
-              placeholder="Введите ваше имя"
             />
-          </div>
 
-          <div className="form-group">
-            <label>Email</label>
-            <input
+            <Input
+              label="Email (необязательно)"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="Введите email (необязательно)"
+              placeholder="example@mail.com"
             />
-          </div>
 
-          <div className="form-group">
-            <label>Телефон</label>
-            <input
+            <Input
+              label="Телефон (необязательно)"
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="Введите телефон (необязательно)"
+              placeholder="+7 (999) 123-45-67"
             />
-          </div>
 
-          <button type="submit" className="btn-submit" disabled={submitting}>
-            {submitting ? 'Регистрация...' : 'Зарегистрироваться'}
-          </button>
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-2xl text-red-600 text-sm font-medium">
+                {error}
+              </div>
+            )}
 
-          <p className="login-link">
-            Уже есть аккаунт? <a href="/login">Войти</a>
-          </p>
-        </form>
+            <Button type="submit" isLoading={submitting}>
+              Зарегистрироваться
+            </Button>
+
+            <div className="mt-6 text-center">
+              <span className="text-slate-600">Уже есть аккаунт? </span>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="text-blue-600 font-bold hover:text-blue-700 transition-colors"
+              >
+                Войти
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
