@@ -49,25 +49,11 @@ export const EditTeam: React.FC = () => {
                 setTeamImage(data.imageUrl || '');
                 setParticipants(data.participants || []);
             } else {
-                // Mock data
-                setTeamName('Команда Чемпионов');
-                setMotto('Вместе к победе! 🏆');
-                setTeamImage('https://via.placeholder.com/200x200/3b82f6/ffffff?text=Team');
-                setParticipants([
-                    { id: 1, name: 'Иван Иванов', role: 'Капитан' },
-                    { id: 2, name: 'Мария Петрова', role: 'Участник' },
-                    { id: 3, name: 'Алексей Сидоров', role: 'Участник' },
-                    { id: 4, name: 'Елена Смирнова', role: 'Участник' },
-                ]);
+                setError('Не удалось загрузить данные команды');
             }
         } catch (err) {
             console.error('Error fetching team:', err);
-            setTeamName('Команда Чемпионов');
-            setMotto('Вместе к победе! 🏆');
-            setParticipants([
-                { id: 1, name: 'Иван Иванов', role: 'Капитан' },
-                { id: 2, name: 'Мария Петрова', role: 'Участник' },
-            ]);
+            setError('Ошибка подключения к серверу');
         }
     };
 
