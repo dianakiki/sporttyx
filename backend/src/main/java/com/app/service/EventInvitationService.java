@@ -45,7 +45,7 @@ public class EventInvitationService {
     private static final SecureRandom random = new SecureRandom();
     
     @Transactional
-    public EventInvitationResponse createInvitation(CreateEventInvitationRequest request, Long createdById) {
+    public EventInvitationResponse createInvitation(CreateEventInvitationRequest request, Long createdById, HttpServletRequest httpRequest) {
         Event event = eventRepository.findById(request.getEventId())
                 .orElseThrow(() -> new RuntimeException("Event not found"));
         
@@ -62,11 +62,11 @@ public class EventInvitationService {
         
         invitation = eventInvitationRepository.save(invitation);
         
-        return toEventInvitationResponse(invitation);
+        return toEventInvitationResponse(invitation, httpRequest);
     }
     
     @Transactional
-    public EventInvitationResponse updateInvitation(Long invitationId, CreateEventInvitationRequest request, Long userId) {
+    public EventInvitationResponse updateInvitation(Long invitationId, CreateEventInvitationRequest request, Long userId, HttpServletRequest httpRequest) {
         EventInvitation invitation = eventInvitationRepository.findById(invitationId)
                 .orElseThrow(() -> new RuntimeException("Invitation not found"));
         
@@ -82,7 +82,7 @@ public class EventInvitationService {
         
         invitation = eventInvitationRepository.save(invitation);
         
-        return toEventInvitationResponse(invitation);
+        return toEventInvitationResponse(invitation, httpRequest);
     }
     
     @Transactional
@@ -111,18 +111,18 @@ public class EventInvitationService {
         eventInvitationRepository.delete(invitation);
     }
     
-    public List<EventInvitationResponse> getEventInvitations(Long eventId) {
+    public List<EventInvitationResponse> getEventInvitations(Long eventId, HttpServletRequest httpRequest) {
         return eventInvitationRepository.findByEventId(eventId)
                 .stream()
-                .map(this::toEventInvitationResponse)
+                .map(inv -> toEventInvitationResponse(inv, httpRequest))
                 .collect(Collectors.toList());
     }
     
-    public EventInvitationResponse getInvitationByToken(String token) {
+    public EventInvitationResponse getInvitationByToken(String token, HttpServletRequest httpRequest) {
         EventInvitation invitation = eventInvitationRepository.findByInvitationToken(token)
                 .orElseThrow(() -> new RuntimeException("Invitation not found"));
         
-        return toEventInvitationResponse(invitation);
+        return toEventInvitationResponse(invitation, httpRequest);
     }
     
     @Transactional
@@ -187,7 +187,7 @@ public class EventInvitationService {
                 ));
         
         List<EventInvitationResponse> invitationResponses = invitations.stream()
-                .map(this::toEventInvitationResponse)
+                .map(inv -> toEventInvitationResponse(inv, null))
                 .collect(Collectors.toList());
         
         List<EventInvitationUsageResponse> recentUsages = allUsages.stream()
@@ -268,8 +268,34 @@ public class EventInvitationService {
         return request.getRemoteAddr();
     }
     
-    private EventInvitationResponse toEventInvitationResponse(EventInvitation invitation) {
-        String invitationUrl = frontendUrl + "/register?invite=" + invitation.getInvitationToken();
+    private String getBaseUrl(HttpServletRequest request) {
+        if (request == null) {
+            return frontendUrl;
+        }
+        
+        String scheme = request.getHeader("X-Forwarded-Proto");
+        if (scheme == null || scheme.isEmpty()) {
+            scheme = request.getScheme();
+        }
+        
+        String host = request.getHeader("X-Forwarded-Host");
+        if (host == null || host.isEmpty()) {
+            host = request.getHeader("Host");
+        }
+        if (host == null || host.isEmpty()) {
+            host = request.getServerName();
+            int port = request.getServerPort();
+            if ((scheme.equals("http") && port != 80) || (scheme.equals("https") && port != 443)) {
+                host = host + ":" + port;
+            }
+        }
+        
+        return scheme + "://" + host;
+    }
+    
+    private EventInvitationResponse toEventInvitationResponse(EventInvitation invitation, HttpServletRequest httpRequest) {
+        String baseUrl = getBaseUrl(httpRequest);
+        String invitationUrl = baseUrl + "/register?invite=" + invitation.getInvitationToken();
         
         return new EventInvitationResponse(
                 invitation.getId(),

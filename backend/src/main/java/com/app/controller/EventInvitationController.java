@@ -29,9 +29,10 @@ public class EventInvitationController {
     @PostMapping("/admin/event-invitations")
     public ResponseEntity<EventInvitationResponse> createInvitation(
             @RequestBody CreateEventInvitationRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal UserDetails userDetails,
+            HttpServletRequest httpRequest) {
         Long userId = getCurrentUserId(userDetails);
-        EventInvitationResponse response = eventInvitationService.createInvitation(request, userId);
+        EventInvitationResponse response = eventInvitationService.createInvitation(request, userId, httpRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
@@ -39,9 +40,10 @@ public class EventInvitationController {
     public ResponseEntity<EventInvitationResponse> updateInvitation(
             @PathVariable Long id,
             @RequestBody CreateEventInvitationRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal UserDetails userDetails,
+            HttpServletRequest httpRequest) {
         Long userId = getCurrentUserId(userDetails);
-        EventInvitationResponse response = eventInvitationService.updateInvitation(id, request, userId);
+        EventInvitationResponse response = eventInvitationService.updateInvitation(id, request, userId, httpRequest);
         return ResponseEntity.ok(response);
     }
     
@@ -73,8 +75,10 @@ public class EventInvitationController {
     }
     
     @GetMapping("/admin/events/{eventId}/invitations")
-    public ResponseEntity<List<EventInvitationResponse>> getEventInvitations(@PathVariable Long eventId) {
-        List<EventInvitationResponse> invitations = eventInvitationService.getEventInvitations(eventId);
+    public ResponseEntity<List<EventInvitationResponse>> getEventInvitations(
+            @PathVariable Long eventId,
+            HttpServletRequest httpRequest) {
+        List<EventInvitationResponse> invitations = eventInvitationService.getEventInvitations(eventId, httpRequest);
         return ResponseEntity.ok(invitations);
     }
     
@@ -91,9 +95,11 @@ public class EventInvitationController {
     }
     
     @GetMapping("/public/invitation/{token}")
-    public ResponseEntity<EventInvitationResponse> getInvitationByToken(@PathVariable String token) {
+    public ResponseEntity<EventInvitationResponse> getInvitationByToken(
+            @PathVariable String token,
+            HttpServletRequest httpRequest) {
         try {
-            EventInvitationResponse invitation = eventInvitationService.getInvitationByToken(token);
+            EventInvitationResponse invitation = eventInvitationService.getInvitationByToken(token, httpRequest);
             return ResponseEntity.ok(invitation);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();

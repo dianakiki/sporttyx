@@ -1,7 +1,8 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { RegistrationForm } from './components/RegistrationForm';
 import { LoginForm } from './components/LoginForm';
+import RegisterWithInvitation from './components/RegisterWithInvitation';
 import { ParticipantProfile } from './components/ParticipantProfile';
 import { AddTeamForm } from './components/AddTeamForm';
 import { CreateTeamForm } from './components/CreateTeamForm';
@@ -26,12 +27,19 @@ const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) 
   return token ? children : <Navigate to="/login" />;
 };
 
+const RegisterRoute: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite');
+  
+  return inviteToken ? <RegisterWithInvitation /> : <RegistrationForm />;
+};
+
 function App() {
   return (
     <Router>
       <Routes>
         {/* Страницы без header (login/register) */}
-        <Route path="/register" element={<RegistrationForm />} />
+        <Route path="/register" element={<RegisterRoute />} />
         <Route path="/login" element={<LoginForm />} />
         
         {/* Страницы с header */}
