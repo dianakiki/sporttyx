@@ -65,6 +65,7 @@ jobs:
               --network sporttyx-net \
               --restart always \
               -p 8080:8080 \
+              -v /var/sporttyx/uploads:/app/uploads \
               -e SPRING_DATASOURCE_URL=jdbc:postgresql://db-postgres:5432/sporttyx_db \
               ghcr.io/${{ github.repository }}-backend:latest
             
