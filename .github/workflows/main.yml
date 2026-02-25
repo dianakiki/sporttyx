@@ -1,0 +1,76 @@
+name: CI/CD Sporttyx (GitHub Packages)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # Важно для загрузки образов
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ghcr.io/${{ github.repository }}-backend:latest
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ghcr.io/${{ github.repository }}-frontend:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Логинимся в GitHub Registry прямо на сервере
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Тянем новые образы
+            docker pull ghcr.io/${{ github.repository }}-backend:latest
+            docker pull ghcr.io/${{ github.repository }}-frontend:latest
+
+            # Перезапуск бэкенда
+            docker stop backend || true
+            docker rm backend || true
+            docker run -d \
+              --name backend \
+              --network sporttyx-net \
+              --restart always \
+              -e SPRING_DATASOURCE_URL=jdbc:postgresql://db-postgres:5432/sporttyx_db \
+              ghcr.io/${{ github.repository }}-backend:latest
+
+            # Перезапуск фронтенда
+            docker stop sporttyx-frontend || true
+            docker rm sporttyx-frontend || true
+            docker run -d \
+              --name sporttyx-frontend \
+              --network sporttyx-net \
+              -p 80:80 \
+              --restart always \
+              ghcr.io/${{ github.repository }}-frontend:latest
+
+            docker image prune -f
