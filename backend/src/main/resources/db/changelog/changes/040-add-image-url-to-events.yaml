@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 040-add-image-url-to-events
+      author: system
+      changes:
+        - addColumn:
+            tableName: events
+            columns:
+              - column:
+                  name: image_url
+                  type: varchar(500)

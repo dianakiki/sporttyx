@@ -1,0 +1,42 @@
+databaseChangeLog:
+  - changeSet:
+      id: 041-create-event-news-table
+      author: system
+      changes:
+        - createTable:
+            tableName: event_news
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: event_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_event_news_event
+                    references: events(id)
+              - column:
+                  name: content
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_event_news_participant
+                    references: participants(id)
+              - column:
+                  name: created_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
