@@ -1,5 +1,6 @@
 package com.app.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,17 +23,20 @@ import java.util.UUID;
 @Service
 public class ImageService {
     
+    @Value("${app.upload.base-path:/app/uploads}")
+    private String uploadBasePath;
+    
     private static final int MAX_WIDTH = 800;
     private static final int MAX_HEIGHT = 800;
     private static final float COMPRESSION_QUALITY = 0.85f;
     
     public String saveTeamImage(MultipartFile file) throws IOException {
-        String uploadDir = "uploads/teams/";
+        String uploadDir = uploadBasePath + "/teams/";
         return saveImage(file, uploadDir);
     }
     
     public String saveActivityImage(MultipartFile file) throws IOException {
-        String uploadDir = "uploads/activities/";
+        String uploadDir = uploadBasePath + "/activities/";
         return saveImage(file, uploadDir);
     }
     
@@ -66,7 +70,7 @@ public class ImageService {
         
         compressAndSaveImage(resizedImage, filePath);
         
-        return "/" + uploadDir + filename;
+        return uploadDir.replace(uploadBasePath, "/uploads") + filename;
     }
     
     private BufferedImage resizeImage(BufferedImage originalImage, int maxWidth, int maxHeight) {

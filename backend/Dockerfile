@@ -22,6 +22,10 @@ WORKDIR /app
 # Копируем собранный jar из первого этапа
 COPY --from=build /app/target/*.jar app.jar
 
+# Создаем директории для загрузки файлов
+RUN mkdir -p /app/uploads/teams /app/uploads/activities && \
+    chmod -R 755 /app/uploads
+
 EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
