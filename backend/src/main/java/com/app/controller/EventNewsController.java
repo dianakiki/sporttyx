@@ -2,10 +2,15 @@ package com.app.controller;
 
 import com.app.dto.EventNewsRequest;
 import com.app.dto.EventNewsResponse;
+import com.app.model.Participant;
+import com.app.repository.ParticipantRepository;
 import com.app.service.EventNewsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +23,9 @@ public class EventNewsController {
     @Autowired
     private EventNewsService eventNewsService;
     
+    @Autowired
+    private ParticipantRepository participantRepository;
+    
     @GetMapping("/{eventId}/news")
     public ResponseEntity<List<EventNewsResponse>> getEventNews(@PathVariable Long eventId) {
         List<EventNewsResponse> news = eventNewsService.getEventNews(eventId);
@@ -27,9 +35,13 @@ public class EventNewsController {
     @PostMapping("/{eventId}/news")
     public ResponseEntity<EventNewsResponse> createEventNews(
             @PathVariable Long eventId,
-            @RequestBody EventNewsRequest request,
-            @RequestAttribute("userId") Long userId) {
-        EventNewsResponse news = eventNewsService.createEventNews(eventId, request, userId);
+            @RequestBody EventNewsRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = ((UserDetails) authentication.getPrincipal()).getUsername();
+        Participant participant = participantRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Participant not found"));
+        
+        EventNewsResponse news = eventNewsService.createEventNews(eventId, request, participant.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(news);
     }
     
