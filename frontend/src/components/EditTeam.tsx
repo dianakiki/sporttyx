@@ -4,6 +4,7 @@ import { Users, Camera, Save, Trash2, ArrowLeft, X } from 'lucide-react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
+import axiosInstance from '../api/axiosConfig';
 
 interface Participant {
     id: number;
@@ -35,25 +36,21 @@ export const EditTeam: React.FC = () => {
 
     const fetchTeamData = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/teams/${teamId || '1'}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
+            const [teamResponse, participantsResponse] = await Promise.all([
+                axiosInstance.get(`/teams/${teamId || '1'}`),
+                axiosInstance.get(`/teams/${teamId || '1'}/participants`)
+            ]);
 
-            if (response.ok) {
-                const data = await response.json();
-                setTeamName(data.name || '');
-                setMotto(data.motto || '');
-                setTeamImage(data.imageUrl || '');
-                setParticipants(data.participants || []);
-            } else {
-                setError('Не удалось загрузить данные команды');
-            }
+            const teamData = teamResponse.data;
+            const participantsData = participantsResponse.data;
+
+            setTeamName(teamData.name || '');
+            setMotto(teamData.motto || '');
+            setTeamImage(teamData.imageUrl || '');
+            setParticipants(participantsData || []);
         } catch (err) {
             console.error('Error fetching team:', err);
-            setError('Ошибка подключения к серверу');
+            setError('Ошибка загрузки данных команды');
         }
     };
 
@@ -86,28 +83,16 @@ export const EditTeam: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/teams/${teamId || '1'}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    name: teamName,
-                    motto: motto,
-                    imageUrl: teamImage,
-                    participants: participants,
-                }),
+            await axiosInstance.put(`/teams/${teamId || '1'}`, {
+                name: teamName,
+                motto: motto,
+                imageUrl: teamImage,
+                participants: participants,
             });
-
-            if (response.ok) {
-                navigate('/my-team');
-            } else {
-                setError('Ошибка сохранения команды');
-            }
+            navigate('/my-team');
         } catch (err) {
-            setError('Ошибка подключения к серверу');
+            console.error('Error updating team:', err);
+            setError('Ошибка сохранения команды');
         } finally {
             setIsLoading(false);
         }
@@ -119,21 +104,11 @@ export const EditTeam: React.FC = () => {
         }
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/teams/${teamId || '1'}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                navigate('/');
-            } else {
-                setError('Ошибка удаления команды');
-            }
+            await axiosInstance.delete(`/teams/${teamId || '1'}`);
+            navigate('/');
         } catch (err) {
-            setError('Ошибка подключения к серверу');
+            console.error('Error deleting team:', err);
+            setError('Ошибка удаления команды');
         }
     };
 

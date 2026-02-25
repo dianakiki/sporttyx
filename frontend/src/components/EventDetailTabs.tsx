@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Settings, Activity as ActivityIcon, Gift, UserCheck, Users, Upload, Search, Edit, Save, Plus, Trash2, UserPlus, X, Bell, Send, Link } from 'lucide-react';
+import { Settings, Activity as ActivityIcon, Gift, UserCheck, Users, Upload, Search, Edit, Save, Plus, Trash2, UserPlus, X, Bell, Send, Link, Eye } from 'lucide-react';
 import { translateDashboardType } from '../utils/translations';
 import axiosInstance from '../api/axiosConfig';
 import { BonusManagement } from './BonusManagement';
@@ -8,12 +8,13 @@ import { ActivityTypeModal, ActivityTypeFormData } from './ActivityTypeModal';
 import { NotificationModal } from './NotificationModal';
 import EventInvitationManager from './EventInvitationManager';
 import EventInvitationStats from './EventInvitationStats';
-import { EventDescriptionEdit } from './EventDescriptionEdit';
+import ReactMarkdown from 'react-markdown';
 
 interface Event {
     id: number;
     name: string;
     description: string;
+    imageUrl?: string;
     startDate: string;
     endDate: string;
     status: string;
@@ -22,6 +23,13 @@ interface Event {
     trackActivityDuration?: boolean;
     dashboardTypes?: string[];
     dashboardOrder?: string[];
+}
+
+interface EventNews {
+    id: number;
+    content: string;
+    createdByName: string;
+    createdAt: string;
 }
 
 interface Team {
@@ -75,7 +83,10 @@ export const EventDetailTabs: React.FC = () => {
     const [teamParticipants, setTeamParticipants] = useState<any[]>([]);
     const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
     const [availableParticipants, setAvailableParticipants] = useState<any[]>([]);
-    const [showDescriptionEditModal, setShowDescriptionEditModal] = useState(false);
+    const [eventNews, setEventNews] = useState<EventNews[]>([]);
+    const [newNewsContent, setNewNewsContent] = useState('');
+    const [showDescriptionPreview, setShowDescriptionPreview] = useState(false);
+    const [showNewsPreview, setShowNewsPreview] = useState(false);
 
     useEffect(() => {
         if (eventId) {
@@ -122,11 +133,12 @@ export const EventDetailTabs: React.FC = () => {
 
     const fetchData = async () => {
         try {
-            const [eventRes, teamsRes, activityTypesRes, participantsRes] = await Promise.all([
+            const [eventRes, teamsRes, activityTypesRes, participantsRes, newsRes] = await Promise.all([
                 axiosInstance.get(`/events/${eventId}`),
                 axiosInstance.get(`/teams?eventId=${eventId}`),
                 axiosInstance.get(`/activity-types?eventId=${eventId}`),
-                axiosInstance.get('/admin/participants')
+                axiosInstance.get('/admin/participants'),
+                axiosInstance.get(`/events/${eventId}/news`)
             ]);
 
             setEvent(eventRes.data);
@@ -134,6 +146,7 @@ export const EventDetailTabs: React.FC = () => {
             setTeams(teamsRes.data);
             setActivityTypes(activityTypesRes.data);
             setParticipants(participantsRes.data);
+            setEventNews(newsRes.data);
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -185,6 +198,60 @@ export const EventDetailTabs: React.FC = () => {
             } catch (error) {
                 console.error('Error deleting activity type:', error);
             }
+        }
+    };
+
+    const handleAddNews = async () => {
+        if (!newNewsContent.trim()) {
+            alert('Введите текст новости');
+            return;
+        }
+
+        try {
+            await axiosInstance.post(`/events/${eventId}/news`, {
+                content: newNewsContent
+            });
+            setNewNewsContent('');
+            await fetchData();
+            alert('Новость успешно добавлена!');
+        } catch (error) {
+            console.error('Error adding news:', error);
+            alert('Ошибка при добавлении новости');
+        }
+    };
+
+    const handleDeleteNews = async (newsId: number) => {
+        if (!window.confirm('Удалить эту новость?')) return;
+
+        try {
+            await axiosInstance.delete(`/events/news/${newsId}`);
+            await fetchData();
+            alert('Новость удалена!');
+        } catch (error) {
+            console.error('Error deleting news:', error);
+            alert('Ошибка при удалении новости');
+        }
+    };
+
+    const handleEventImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await axiosInstance.post('/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            const imageUrl = response.data.url || response.data;
+            setEditForm({ ...editForm, imageUrl });
+            alert('Обложка успешно загружена!');
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            alert('Ошибка при загрузке обложки');
         }
     };
 
@@ -588,37 +655,28 @@ export const EventDetailTabs: React.FC = () => {
                     <div className="bg-white rounded-3xl shadow-xl p-8">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-slate-900">Настройки мероприятия</h2>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setShowDescriptionEditModal(true)}
-                                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-purple-700 transition-all flex items-center gap-2"
-                                >
-                                    <Edit className="w-5 h-5" />
-                                    Редактирование описания
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        if (isEditing) {
-                                            handleSaveEvent();
-                                        } else {
-                                            setIsEditing(true);
-                                        }
-                                    }}
-                                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all flex items-center gap-2"
-                                >
-                                    {isEditing ? (
-                                        <>
-                                            <Save className="w-5 h-5" />
-                                            Сохранить
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Edit className="w-5 h-5" />
-                                            Редактировать
-                                        </>
-                                    )}
-                                </button>
-                            </div>
+                            <button
+                                onClick={() => {
+                                    if (isEditing) {
+                                        handleSaveEvent();
+                                    } else {
+                                        setIsEditing(true);
+                                    }
+                                }}
+                                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all flex items-center gap-2"
+                            >
+                                {isEditing ? (
+                                    <>
+                                        <Save className="w-5 h-5" />
+                                        Сохранить
+                                    </>
+                                ) : (
+                                    <>
+                                        <Edit className="w-5 h-5" />
+                                        Редактировать
+                                    </>
+                                )}
+                            </button>
                         </div>
 
                         {isEditing ? (
@@ -633,13 +691,54 @@ export const EventDetailTabs: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Описание</label>
-                                    <textarea
-                                        value={editForm.description || ''}
-                                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                                        rows={3}
-                                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none resize-none"
-                                    />
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Обложка мероприятия</label>
+                                    <div className="space-y-3">
+                                        {editForm.imageUrl && (
+                                            <div className="relative w-full h-48 rounded-xl overflow-hidden border-2 border-slate-200">
+                                                <img 
+                                                    src={editForm.imageUrl} 
+                                                    alt="Обложка мероприятия" 
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.currentTarget.src = 'https://via.placeholder.com/800x400?text=Обложка+мероприятия';
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleEventImageUpload}
+                                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                        />
+                                        <p className="text-xs text-slate-500">Рекомендуемый размер: 1200x600px</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="block text-sm font-semibold text-slate-700">Описание (Markdown)</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowDescriptionPreview(!showDescriptionPreview)}
+                                            className="flex items-center gap-2 px-3 py-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                                        >
+                                            <Eye className="w-4 h-4" />
+                                            {showDescriptionPreview ? 'Редактор' : 'Предпросмотр'}
+                                        </button>
+                                    </div>
+                                    {showDescriptionPreview ? (
+                                        <div className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 min-h-[120px] prose prose-sm max-w-none">
+                                            <ReactMarkdown>{editForm.description || 'Описание отсутствует'}</ReactMarkdown>
+                                        </div>
+                                    ) : (
+                                        <textarea
+                                            value={editForm.description || ''}
+                                            onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                                            rows={5}
+                                            placeholder="Введите описание мероприятия с поддержкой Markdown..."
+                                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none resize-none font-mono text-sm"
+                                        />
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -784,6 +883,77 @@ export const EventDetailTabs: React.FC = () => {
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Секция управления новостями */}
+                                <div className="border-t-2 border-slate-200 pt-6 mt-6">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4">Новости мероприятия</h3>
+                                    
+                                    {/* Добавление новой новости */}
+                                    <div className="mb-6">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="block text-sm font-semibold text-slate-700">Новая новость (Markdown)</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowNewsPreview(!showNewsPreview)}
+                                                className="flex items-center gap-2 px-3 py-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                                {showNewsPreview ? 'Редактор' : 'Предпросмотр'}
+                                            </button>
+                                        </div>
+                                        {showNewsPreview ? (
+                                            <div className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 min-h-[100px] prose prose-sm max-w-none mb-3">
+                                                <ReactMarkdown>{newNewsContent || 'Новость пуста'}</ReactMarkdown>
+                                            </div>
+                                        ) : (
+                                            <textarea
+                                                value={newNewsContent}
+                                                onChange={(e) => setNewNewsContent(e.target.value)}
+                                                rows={4}
+                                                placeholder="Введите текст новости с поддержкой Markdown..."
+                                                className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none resize-none font-mono text-sm mb-3"
+                                            />
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={handleAddNews}
+                                            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            Добавить новость
+                                        </button>
+                                    </div>
+
+                                    {/* Список новостей */}
+                                    <div className="space-y-3">
+                                        <h4 className="text-sm font-semibold text-slate-700">Опубликованные новости ({eventNews.length})</h4>
+                                        {eventNews.length === 0 ? (
+                                            <p className="text-sm text-slate-500 italic">Новостей пока нет</p>
+                                        ) : (
+                                            eventNews.map((news) => (
+                                                <div key={news.id} className="p-4 border-2 border-slate-200 rounded-xl bg-white hover:shadow-md transition-shadow">
+                                                    <div className="flex items-start justify-between mb-2">
+                                                        <div className="flex-1">
+                                                            <div className="text-xs text-slate-500 mb-1">
+                                                                {news.createdByName} • {new Date(news.createdAt).toLocaleString('ru-RU')}
+                                                            </div>
+                                                            <div className="prose prose-sm max-w-none">
+                                                                <ReactMarkdown>{news.content}</ReactMarkdown>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteNews(news.id)}
+                                                            className="ml-3 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -1597,14 +1767,6 @@ export const EventDetailTabs: React.FC = () => {
                         </div>
                     </div>
                 )}
-
-                {/* Event Description Edit Modal */}
-                <EventDescriptionEdit
-                    eventId={Number(eventId)}
-                    isOpen={showDescriptionEditModal}
-                    onClose={() => setShowDescriptionEditModal(false)}
-                    onSuccess={fetchData}
-                />
             </div>
         </div>
     );
