@@ -57,12 +57,13 @@ jobs:
             docker stop backend || true
             docker rm backend || true
             docker run -d \
-              --name backend \
-              --network sporttyx-net \
-              --restart always \
-              -e SPRING_DATASOURCE_URL=jdbc:postgresql://db-postgres:5432/sporttyx_db \
-              ghcr.io/${{ github.repository }}-backend:latest
-
+            --name backend \
+            --network sporttyx-net \
+            --restart always \
+            -p 8080:8080 \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://db-postgres:5432/sporttyx_db \
+            ghcr.io/${{ github.repository }}-backend:latest
+            
             # Перезапуск фронтенда
             docker stop sporttyx-frontend || true
             docker rm sporttyx-frontend || true
