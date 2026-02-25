@@ -1,0 +1,233 @@
+.event-invitation-manager {
+  padding: 20px;
+}
+
+.event-invitation-manager .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.event-invitation-manager h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #333;
+}
+
+.create-form {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.create-form h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #555;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.invitations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.invitation-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.invitation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.invitation-info h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.invitation-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.badge-inactive {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.badge-expired {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.badge-maxed {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.invitation-url {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.invitation-url input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f8f9fa;
+  font-size: 14px;
+  font-family: monospace;
+}
+
+.invitation-stats {
+  display: flex;
+  gap: 30px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-primary:hover {
+  background: #0056b3;
+}
+
+.btn-toggle {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn-toggle.active {
+  background: #28a745;
+}
+
+.btn-toggle:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-delete {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn-delete:hover {
+  background: #c82333;
+}
+
+.btn-copy {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.btn-copy:hover {
+  background: #138496;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}

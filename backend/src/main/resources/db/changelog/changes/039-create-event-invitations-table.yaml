@@ -1,0 +1,145 @@
+databaseChangeLog:
+  - changeSet:
+      id: 039-create-event-invitations-table
+      author: sporttyx
+      changes:
+        - createTable:
+            tableName: event_invitations
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: event_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invitation_token
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  type: VARCHAR(500)
+              - column:
+                  name: max_uses
+                  type: INTEGER
+              - column:
+                  name: times_used
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: TIMESTAMP
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+        - addForeignKeyConstraint:
+            baseTableName: event_invitations
+            baseColumnNames: event_id
+            referencedTableName: events
+            referencedColumnNames: id
+            constraintName: fk_event_invitations_event
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: event_invitations
+            baseColumnNames: created_by_id
+            referencedTableName: participants
+            referencedColumnNames: id
+            constraintName: fk_event_invitations_created_by
+            onDelete: CASCADE
+        - createTable:
+            tableName: event_invitation_usage
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: invitation_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: participant_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ip_address
+                  type: VARCHAR(45)
+              - column:
+                  name: user_agent
+                  type: VARCHAR(500)
+              - column:
+                  name: used_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: event_invitation_usage
+            baseColumnNames: invitation_id
+            referencedTableName: event_invitations
+            referencedColumnNames: id
+            constraintName: fk_event_invitation_usage_invitation
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: event_invitation_usage
+            baseColumnNames: participant_id
+            referencedTableName: participants
+            referencedColumnNames: id
+            constraintName: fk_event_invitation_usage_participant
+            onDelete: CASCADE
+        - createIndex:
+            tableName: event_invitations
+            indexName: idx_event_invitations_token
+            columns:
+              - column:
+                  name: invitation_token
+        - createIndex:
+            tableName: event_invitations
+            indexName: idx_event_invitations_event_id
+            columns:
+              - column:
+                  name: event_id
+        - createIndex:
+            tableName: event_invitation_usage
+            indexName: idx_event_invitation_usage_invitation_id
+            columns:
+              - column:
+                  name: invitation_id
+        - createIndex:
+            tableName: event_invitation_usage
+            indexName: idx_event_invitation_usage_participant_id
+            columns:
+              - column:
+                  name: participant_id
