@@ -37,8 +37,8 @@ services:
   backend:
     # Собираем образ из Dockerfile в папке backend
     build:
-      context: .
-      dockerfile: ./backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     # Имя контейнера
     container_name: sporttyx-backend
     # Проброс портов: хост:контейнер
