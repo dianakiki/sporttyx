@@ -35,6 +35,7 @@ jobs:
           context: ./frontend
           push: true
           tags: ghcr.io/${{ github.repository }}-frontend:latest
+          no-cache: true
 
   deploy:
     needs: build-and-push
