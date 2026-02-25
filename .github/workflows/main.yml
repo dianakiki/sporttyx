@@ -46,32 +46,30 @@ jobs:
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Логинимся в GitHub Registry прямо на сервере
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            # Тянем новые образы
+            
             docker pull ghcr.io/${{ github.repository }}-backend:latest
             docker pull ghcr.io/${{ github.repository }}-frontend:latest
-
-            # Перезапуск бэкенда
-            docker stop backend || true
-            docker rm backend || true
-            docker run -d \
-            --name backend \
-            --network sporttyx-net \
-            --restart always \
-            -p 8080:8080 \
-            -e SPRING_DATASOURCE_URL=jdbc:postgresql://db-postgres:5432/sporttyx_db \
-            ghcr.io/${{ github.repository }}-backend:latest
             
-            # Перезапуск фронтенда
-            docker stop sporttyx-frontend || true
-            docker rm sporttyx-frontend || true
+            # Удаляем ВООБЩЕ ВСЁ, что может занимать порты (и старые, и новые имена)
+            docker stop backend sporttyx-backend sporttyx-frontend || true
+            docker rm backend sporttyx-backend sporttyx-frontend || true
+            
+            # Запуск бэкенда (имя теперь строго 'backend')
+            docker run -d \
+              --name backend \
+              --network sporttyx-net \
+              --restart always \
+              -p 8080:8080 \
+              -e SPRING_DATASOURCE_URL=jdbc:postgresql://db-postgres:5432/sporttyx_db \
+              ghcr.io/${{ github.repository }}-backend:latest
+            
+            # Запуск фронтенда (порт строго 80)
             docker run -d \
               --name sporttyx-frontend \
               --network sporttyx-net \
               -p 80:80 \
               --restart always \
               ghcr.io/${{ github.repository }}-frontend:latest
-
+            
             docker image prune -f
