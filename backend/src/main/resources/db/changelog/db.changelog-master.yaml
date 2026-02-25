@@ -73,3 +73,5 @@ databaseChangeLog:
       file: db/changelog/changes/037-make-bug-number-nullable.yaml
   - include:
       file: db/changelog/changes/038-create-notification-templates-table.yaml
+  - include:
+      file: db/changelog/changes/039-create-event-invitations-table.yaml

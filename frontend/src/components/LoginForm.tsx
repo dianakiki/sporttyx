@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -15,6 +15,13 @@ export const LoginForm: React.FC = () => {
     const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
     const [tempUserData, setTempUserData] = useState<any>(null);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            navigate('/');
+        }
+    }, [navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
