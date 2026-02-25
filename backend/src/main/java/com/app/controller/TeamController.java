@@ -109,6 +109,29 @@ public class TeamController {
     }
     
     /**
+     * Добавить участника в команду
+     */
+    @PostMapping("/{teamId}/add-participant")
+    public ResponseEntity<MessageResponse> addParticipant(
+            @PathVariable Long teamId,
+            @RequestBody Map<String, Long> request) {
+        Long participantId = request.get("participantId");
+        teamService.addParticipant(teamId, participantId);
+        return ResponseEntity.ok(new MessageResponse("Participant added to team"));
+    }
+    
+    /**
+     * Удалить участника из команды
+     */
+    @DeleteMapping("/{teamId}/participants/{participantId}")
+    public ResponseEntity<MessageResponse> removeParticipant(
+            @PathVariable Long teamId,
+            @PathVariable Long participantId) {
+        teamService.removeParticipant(teamId, participantId);
+        return ResponseEntity.ok(new MessageResponse("Participant removed from team"));
+    }
+    
+    /**
      * Получить список участников команды
      */
     @GetMapping("/{id}/participants")

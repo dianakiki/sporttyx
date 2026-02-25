@@ -266,6 +266,55 @@ public class TeamService {
     }
     
     /**
+     * Добавить участника в команду
+     * 
+     * Добавляет нового участника в команду с ролью PARTICIPANT.
+     * Проверяет, что участник еще не состоит в другой команде.
+     * 
+     * @param teamId идентификатор команды
+     * @param participantId идентификатор участника
+     * @throws RuntimeException если команда или участник не найдены, или участник уже в команде
+     */
+    @Transactional
+    public void addParticipant(Long teamId, Long participantId) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new RuntimeException("Team not found"));
+        
+        Participant participant = participantRepository.findById(participantId)
+                .orElseThrow(() -> new RuntimeException("Participant not found"));
+        
+        // Проверяем, не состоит ли участник уже в команде этого мероприятия
+        if (team.getEvent() != null) {
+            List<TeamParticipant> existingTeams = teamParticipantRepository.findByParticipantId(participantId);
+            for (TeamParticipant tp : existingTeams) {
+                if (tp.getTeam().getEvent() != null && 
+                    tp.getTeam().getEvent().getId().equals(team.getEvent().getId())) {
+                    throw new RuntimeException("Participant is already in another team for this event");
+                }
+            }
+        }
+        
+        TeamParticipant teamParticipant = new TeamParticipant();
+        teamParticipant.setTeam(team);
+        teamParticipant.setParticipant(participant);
+        teamParticipant.setRole(TeamRole.PARTICIPANT);
+        teamParticipantRepository.save(teamParticipant);
+    }
+    
+    /**
+     * Удалить участника из команды
+     * 
+     * Удаляет участника из команды.
+     * 
+     * @param teamId идентификатор команды
+     * @param participantId идентификатор участника
+     */
+    @Transactional
+    public void removeParticipant(Long teamId, Long participantId) {
+        teamParticipantRepository.deleteByTeamIdAndParticipantId(teamId, participantId);
+    }
+    
+    /**
      * Получить список участников команды
      * 
      * Возвращает всех участников команды с их ролями.

@@ -67,6 +67,11 @@ export const EventDetailTabs: React.FC = () => {
     const [notificationTab, setNotificationTab] = useState<'drafts' | 'archive'>('drafts');
     const [drafts, setDrafts] = useState<any[]>([]);
     const [sentNotifications, setSentNotifications] = useState<any[]>([]);
+    const [showTeamSettingsModal, setShowTeamSettingsModal] = useState(false);
+    const [selectedTeam, setSelectedTeam] = useState<any | null>(null);
+    const [teamParticipants, setTeamParticipants] = useState<any[]>([]);
+    const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
+    const [availableParticipants, setAvailableParticipants] = useState<any[]>([]);
 
     useEffect(() => {
         if (eventId) {
@@ -175,6 +180,82 @@ export const EventDetailTabs: React.FC = () => {
                 fetchData();
             } catch (error) {
                 console.error('Error deleting activity type:', error);
+            }
+        }
+    };
+
+    const handleOpenTeamSettings = async (team: any) => {
+        setSelectedTeam(team);
+        try {
+            const response = await axiosInstance.get(`/teams/${team.id}/participants`);
+            setTeamParticipants(response.data);
+            setShowTeamSettingsModal(true);
+        } catch (error) {
+            console.error('Error fetching team participants:', error);
+        }
+    };
+
+    const handleUpdateTeam = async (teamData: any) => {
+        try {
+            await axiosInstance.put(`/teams/${selectedTeam.id}`, teamData);
+            fetchData();
+            alert('Команда успешно обновлена');
+        } catch (error) {
+            console.error('Error updating team:', error);
+            alert('Ошибка при обновлении команды');
+        }
+    };
+
+    const handleDeleteTeam = async (teamId: number) => {
+        if (window.confirm('Вы уверены, что хотите удалить эту команду? Это действие необратимо!')) {
+            try {
+                await axiosInstance.delete(`/teams/${teamId}`);
+                setShowTeamSettingsModal(false);
+                fetchData();
+                alert('Команда успешно удалена');
+            } catch (error) {
+                console.error('Error deleting team:', error);
+                alert('Ошибка при удалении команды');
+            }
+        }
+    };
+
+    const handleOpenAddParticipant = async () => {
+        try {
+            const response = await axiosInstance.get('/admin/participants');
+            const currentParticipantIds = teamParticipants.map(p => p.id);
+            const available = response.data.filter((p: any) => !currentParticipantIds.includes(p.id));
+            setAvailableParticipants(available);
+            setShowAddParticipantModal(true);
+        } catch (error) {
+            console.error('Error fetching participants:', error);
+        }
+    };
+
+    const handleAddParticipantToTeam = async (participantId: number) => {
+        try {
+            await axiosInstance.post(`/teams/${selectedTeam.id}/add-participant`, { participantId });
+            const response = await axiosInstance.get(`/teams/${selectedTeam.id}/participants`);
+            setTeamParticipants(response.data);
+            setShowAddParticipantModal(false);
+            alert('Участник добавлен в команду');
+        } catch (error: any) {
+            console.error('Error adding participant:', error);
+            const errorMessage = error.response?.data?.message || 'Ошибка при добавлении участника';
+            alert(errorMessage);
+        }
+    };
+
+    const handleRemoveParticipant = async (participantId: number) => {
+        if (window.confirm('Удалить участника из команды?')) {
+            try {
+                await axiosInstance.delete(`/teams/${selectedTeam.id}/participants/${participantId}`);
+                const response = await axiosInstance.get(`/teams/${selectedTeam.id}/participants`);
+                setTeamParticipants(response.data);
+                alert('Участник удален из команды');
+            } catch (error) {
+                console.error('Error removing participant:', error);
+                alert('Ошибка при удалении участника');
             }
         }
     };
@@ -857,7 +938,13 @@ export const EventDetailTabs: React.FC = () => {
                                                         <div className="text-sm text-slate-600 mt-1">{team.motto}</div>
                                                     )}
                                                 </div>
-                                                <Users className="w-5 h-5 text-slate-400" />
+                                                <button
+                                                    onClick={() => handleOpenTeamSettings(team)}
+                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                    title="Настройки команды"
+                                                >
+                                                    <Settings className="w-5 h-5" />
+                                                </button>
                                             </div>
                                         </div>
                                     ))}
@@ -1322,6 +1409,158 @@ export const EventDetailTabs: React.FC = () => {
                     notificationSuccess={notificationSuccess}
                     notificationCount={notificationCount}
                 />
+
+                {/* Team Settings Modal */}
+                {showTeamSettingsModal && selectedTeam && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+                        <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+                            <div className="bg-white border-b border-slate-200 px-8 py-6 flex items-center justify-between rounded-t-3xl flex-shrink-0">
+                                <h2 className="text-2xl font-bold text-slate-900">Настройки команды</h2>
+                                <button
+                                    onClick={() => {
+                                        setShowTeamSettingsModal(false);
+                                        setSelectedTeam(null);
+                                        setTeamParticipants([]);
+                                    }}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-all"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+                            <div className="overflow-y-auto px-8 py-6 flex-1">
+                                {/* Team Info */}
+                                <div className="mb-6">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-2xl">
+                                            {selectedTeam.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-bold text-slate-900">{selectedTeam.name}</h3>
+                                            {selectedTeam.motto && (
+                                                <p className="text-sm text-slate-600 italic">"{selectedTeam.motto}"</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Edit Team Form */}
+                                <div className="mb-6 p-4 bg-slate-50 rounded-xl">
+                                    <h4 className="font-semibold text-slate-900 mb-3">Редактировать команду</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">Название</label>
+                                            <input
+                                                type="text"
+                                                defaultValue={selectedTeam.name}
+                                                onChange={(e) => setSelectedTeam({ ...selectedTeam, name: e.target.value })}
+                                                className="w-full px-4 py-2 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">Девиз</label>
+                                            <input
+                                                type="text"
+                                                defaultValue={selectedTeam.motto || ''}
+                                                onChange={(e) => setSelectedTeam({ ...selectedTeam, motto: e.target.value })}
+                                                className="w-full px-4 py-2 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => handleUpdateTeam({ name: selectedTeam.name, motto: selectedTeam.motto })}
+                                            className="w-full px-4 py-2 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Save className="w-4 h-4" />
+                                            Сохранить изменения
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Participants Section */}
+                                <div className="mb-6">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="font-semibold text-slate-900">Участники ({teamParticipants.length})</h4>
+                                        <button
+                                            onClick={handleOpenAddParticipant}
+                                            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-all"
+                                        >
+                                            <UserPlus className="w-4 h-4" />
+                                            Добавить
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {teamParticipants.map((participant) => (
+                                            <div key={participant.id} className="flex items-center justify-between p-3 bg-white border-2 border-slate-200 rounded-xl hover:border-blue-300 transition-all">
+                                                <div>
+                                                    <p className="font-semibold text-slate-900">{participant.name}</p>
+                                                    <p className="text-xs text-slate-600">{participant.role}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleRemoveParticipant(participant.id)}
+                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    title="Удалить участника"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Delete Team Section */}
+                                <div className="pt-6 border-t border-slate-200">
+                                    <button
+                                        onClick={() => handleDeleteTeam(selectedTeam.id)}
+                                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-semibold transition-all"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                        Удалить команду
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Add Participant Modal */}
+                {showAddParticipantModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+                        <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+                            <div className="bg-white border-b border-slate-200 px-8 py-6 flex items-center justify-between rounded-t-3xl flex-shrink-0">
+                                <h2 className="text-2xl font-bold text-slate-900">Добавить участника</h2>
+                                <button
+                                    onClick={() => setShowAddParticipantModal(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-all"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+                            <div className="overflow-y-auto px-8 py-6 flex-1">
+                                <div className="space-y-3">
+                                    {availableParticipants.length === 0 ? (
+                                        <div className="text-center py-12">
+                                            <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                                            <p className="text-slate-500">Нет доступных участников</p>
+                                        </div>
+                                    ) : (
+                                        availableParticipants.map((participant) => (
+                                            <div
+                                                key={participant.id}
+                                                className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-blue-50 transition-all cursor-pointer"
+                                                onClick={() => handleAddParticipantToTeam(participant.id)}
+                                            >
+                                                <div>
+                                                    <p className="font-semibold text-slate-900">{participant.name}</p>
+                                                    <p className="text-sm text-slate-600">@{participant.username}</p>
+                                                </div>
+                                                <Plus className="w-5 h-5 text-blue-600" />
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
