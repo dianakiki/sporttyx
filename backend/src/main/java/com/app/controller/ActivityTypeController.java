@@ -141,7 +141,14 @@ public class ActivityTypeController {
             
             // Создаем строку заголовков
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"Название", "Описание", "Баллы"};
+            String[] headers = {
+                "Название",
+                "Описание",
+                "Баллы",
+                "Ограничение по времени (true/false)",
+                "Мин. время (мин)",
+                "Макс. время (мин)"
+            };
             
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
@@ -151,17 +158,24 @@ public class ActivityTypeController {
             
             // Добавляем примеры данных
             String[][] examples = {
-                {"Бег 5 км", "Пробежать 5 километров", "10"},
-                {"Плавание", "Проплыть 500 метров", "15"},
-                {"Велосипед", "Проехать 10 км на велосипеде", "12"}
+                //   Название     Описание                      Баллы  Ограничение  Мин   Макс
+                {"Бег 5 км",     "Пробежать 5 километров",     "10",  "true",      "10", "60"},
+                {"Плавание",     "Проплыть 500 метров",        "15",  "false",     "",   ""},
+                {"Велосипед",    "Проехать 10 км на вело",     "12",  "true",      "",   "120"}
             };
             
             for (int i = 0; i < examples.length; i++) {
                 Row row = sheet.createRow(i + 1);
                 for (int j = 0; j < examples[i].length; j++) {
                     Cell cell = row.createCell(j);
-                    if (j == 2) { // Столбец с баллами
-                        cell.setCellValue(Integer.parseInt(examples[i][j]));
+                    // Столбец с баллами и временами — числовые, остальное строки/boolean как текст
+                    if (j == 2 || j == 4 || j == 5) {
+                        String value = examples[i][j];
+                        if (value != null && !value.isEmpty()) {
+                            cell.setCellValue(Integer.parseInt(value));
+                        } else {
+                            cell.setCellValue("");
+                        }
                     } else {
                         cell.setCellValue(examples[i][j]);
                     }

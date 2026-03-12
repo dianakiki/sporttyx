@@ -43,6 +43,9 @@ interface ActivityType {
     name: string;
     description: string;
     defaultEnergy: number;
+    timeLimitRequired?: boolean;
+    minDurationMinutes?: number | null;
+    maxDurationMinutes?: number | null;
 }
 
 export const EventDetailTabs: React.FC = () => {
@@ -189,7 +192,10 @@ export const EventDetailTabs: React.FC = () => {
                 name: fullData.name,
                 description: fullData.description || '',
                 defaultEnergy: fullData.defaultEnergy,
-                eventId: Number(eventId)
+                eventId: Number(eventId),
+                timeLimitRequired: fullData.timeLimitRequired ?? false,
+                minDurationMinutes: fullData.minDurationMinutes ?? null,
+                maxDurationMinutes: fullData.maxDurationMinutes ?? null
             });
             setShowActivityTypeModal(true);
         } catch (error) {
@@ -199,7 +205,10 @@ export const EventDetailTabs: React.FC = () => {
                 name: activityType.name,
                 description: activityType.description || '',
                 defaultEnergy: activityType.defaultEnergy,
-                eventId: Number(eventId)
+                eventId: Number(eventId),
+                timeLimitRequired: activityType.timeLimitRequired ?? false,
+                minDurationMinutes: activityType.minDurationMinutes ?? null,
+                maxDurationMinutes: activityType.maxDurationMinutes ?? null
             });
             setShowActivityTypeModal(true);
         }

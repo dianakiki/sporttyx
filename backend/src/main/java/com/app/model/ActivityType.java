@@ -34,6 +34,15 @@ public class ActivityType {
     
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "time_limit_required", nullable = false)
+    private boolean timeLimitRequired = false;
+
+    @Column(name = "min_duration_minutes")
+    private Integer minDurationMinutes;
+
+    @Column(name = "max_duration_minutes")
+    private Integer maxDurationMinutes;
     
     @PrePersist
     protected void onCreate() {

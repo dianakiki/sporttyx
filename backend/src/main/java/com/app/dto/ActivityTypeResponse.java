@@ -12,4 +12,7 @@ public class ActivityTypeResponse {
     private String name;
     private String description;
     private Integer defaultEnergy;
+    private Boolean timeLimitRequired;
+    private Integer minDurationMinutes;
+    private Integer maxDurationMinutes;
 }

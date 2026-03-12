@@ -209,7 +209,15 @@ public class AdminController {
     public ResponseEntity<List<ActivityTypeResponse>> getAllActivityTypesAdmin() {
         List<ActivityType> types = activityTypeRepository.findAll();
         List<ActivityTypeResponse> responses = types.stream()
-                .map(t -> new ActivityTypeResponse(t.getId(), t.getName(), t.getDescription(), t.getDefaultEnergy()))
+                .map(t -> new ActivityTypeResponse(
+                        t.getId(),
+                        t.getName(),
+                        t.getDescription(),
+                        t.getDefaultEnergy(),
+                        t.isTimeLimitRequired(),
+                        t.getMinDurationMinutes(),
+                        t.getMaxDurationMinutes()
+                ))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }

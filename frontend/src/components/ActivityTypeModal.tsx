@@ -15,6 +15,9 @@ export interface ActivityTypeFormData {
     description: string;
     defaultEnergy: number;
     eventId?: number | null;
+    timeLimitRequired?: boolean;
+    minDurationMinutes?: number | null;
+    maxDurationMinutes?: number | null;
 }
 
 export const ActivityTypeModal: React.FC<ActivityTypeModalProps> = ({
@@ -28,7 +31,10 @@ export const ActivityTypeModal: React.FC<ActivityTypeModalProps> = ({
         name: '',
         description: '',
         defaultEnergy: 0,
-        eventId: eventId || null
+        eventId: eventId || null,
+        timeLimitRequired: false,
+        minDurationMinutes: null,
+        maxDurationMinutes: null
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -40,14 +46,20 @@ export const ActivityTypeModal: React.FC<ActivityTypeModalProps> = ({
                 name: editingActivityType.name,
                 description: editingActivityType.description,
                 defaultEnergy: editingActivityType.defaultEnergy,
-                eventId: editingActivityType.eventId || eventId || null
+                eventId: editingActivityType.eventId || eventId || null,
+                timeLimitRequired: editingActivityType.timeLimitRequired ?? false,
+                minDurationMinutes: editingActivityType.minDurationMinutes ?? null,
+                maxDurationMinutes: editingActivityType.maxDurationMinutes ?? null
             });
         } else {
             setFormData({
                 name: '',
                 description: '',
                 defaultEnergy: 0,
-                eventId: eventId || null
+                eventId: eventId || null,
+                timeLimitRequired: false,
+                minDurationMinutes: null,
+                maxDurationMinutes: null
             });
         }
         setError(null);
@@ -56,6 +68,31 @@ export const ActivityTypeModal: React.FC<ActivityTypeModalProps> = ({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        // Frontend validation for time limits
+        const timeLimitRequired = !!formData.timeLimitRequired;
+        const min = formData.minDurationMinutes;
+        const max = formData.maxDurationMinutes;
+
+        if (timeLimitRequired) {
+            if (min == null && max == null) {
+                setError('При включённом ограничении по времени укажите минимальное или максимальное время (хотя бы одно поле).');
+                return;
+            }
+            if (min != null && min < 0) {
+                setError('Минимальное время не может быть отрицательным.');
+                return;
+            }
+            if (max != null && max < 0) {
+                setError('Максимальное время не может быть отрицательным.');
+                return;
+            }
+            if (min != null && max != null && min > max) {
+                setError('Минимальное время не может быть больше максимального.');
+                return;
+            }
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -138,6 +175,77 @@ export const ActivityTypeModal: React.FC<ActivityTypeModalProps> = ({
                         />
                         <p className="text-xs text-slate-500 mt-1">
                             Количество энергии, которое будет начисляться за эту активность по умолчанию
+                        </p>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                        <label className="flex items-center gap-3">
+                            <input
+                                type="checkbox"
+                                checked={!!formData.timeLimitRequired}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        timeLimitRequired: e.target.checked,
+                                        // when turning off, clear limits on client as well
+                                        minDurationMinutes: e.target.checked ? formData.minDurationMinutes : null,
+                                        maxDurationMinutes: e.target.checked ? formData.maxDurationMinutes : null,
+                                    })
+                                }
+                                className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                                disabled={isSubmitting}
+                            />
+                            <span className="text-sm font-semibold text-slate-700">
+                                Ограничение по времени (минуты)
+                            </span>
+                        </label>
+
+                        {formData.timeLimitRequired && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                        Минимальное время (мин)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        placeholder="Например, 10"
+                                        value={formData.minDurationMinutes ?? ''}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                minDurationMinutes: e.target.value === '' ? null : Number(e.target.value),
+                                            })
+                                        }
+                                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none"
+                                        disabled={isSubmitting}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                        Максимальное время (мин)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        placeholder="Например, 120"
+                                        value={formData.maxDurationMinutes ?? ''}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                maxDurationMinutes: e.target.value === '' ? null : Number(e.target.value),
+                                            })
+                                        }
+                                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none"
+                                        disabled={isSubmitting}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        <p className="text-xs text-slate-500">
+                            Если ограничение по времени выключено, минимальное и максимальное время будут проигнорированы.
+                            Если включено — должно быть заполнено хотя бы одно поле (минимальное или максимальное время).
                         </p>
                     </div>
 

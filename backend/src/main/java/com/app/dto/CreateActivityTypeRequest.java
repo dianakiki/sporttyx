@@ -12,4 +12,7 @@ public class CreateActivityTypeRequest {
     private String description;
     private Integer defaultEnergy;
     private Long eventId;
+    private Boolean timeLimitRequired;
+    private Integer minDurationMinutes;
+    private Integer maxDurationMinutes;
 }

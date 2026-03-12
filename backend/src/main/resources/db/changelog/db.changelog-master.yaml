@@ -80,4 +80,11 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/041-create-event-news-table.yaml
   - include:
+      file: db/changelog/changes/043-make-team-id-nullable-in-activities.yaml
+  - include:
       file: db/changelog/changes/044-add-points-to-activities.yaml
+  - include:
+      file: db/changelog/changes/045-add-time-limits-to-activity-types.yaml
+  - include:
+      file: db/changelog/changes/046-update-activity-types-unique-constraint.yaml
+
