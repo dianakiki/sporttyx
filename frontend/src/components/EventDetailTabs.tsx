@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Settings, Activity as ActivityIcon, Gift, UserCheck, Users, Upload, Search, Edit, Save, Plus, Trash2, UserPlus, X, Bell, Send, Link, Eye } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Settings, Activity as ActivityIcon, Gift, UserCheck, Users, Upload, Search, Edit, Save, Plus, Trash2, UserPlus, X, Bell, Send, Link, Eye, Download } from 'lucide-react';
 import { translateDashboardType } from '../utils/translations';
 import axiosInstance from '../api/axiosConfig';
 import { BonusManagement } from './BonusManagement';
@@ -47,6 +47,7 @@ interface ActivityType {
 
 export const EventDetailTabs: React.FC = () => {
     const { eventId } = useParams<{ eventId: string }>();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'settings' | 'activities' | 'bonuses' | 'participants' | 'notifications' | 'invitations'>('settings');
     const [event, setEvent] = useState<Event | null>(null);
     const [teams, setTeams] = useState<Team[]>([]);
@@ -54,6 +55,7 @@ export const EventDetailTabs: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
+    const [userRole, setUserRole] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<Partial<Event>>({});
     const [draggedDashboardIndex, setDraggedDashboardIndex] = useState<number | null>(null);
     const [showActivityTypeModal, setShowActivityTypeModal] = useState(false);
@@ -89,10 +91,23 @@ export const EventDetailTabs: React.FC = () => {
     const [showNewsPreview, setShowNewsPreview] = useState(false);
 
     useEffect(() => {
+        // Get user role from localStorage
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                setUserRole(user.role);
+            } catch (e) {
+                console.error('Error parsing user from localStorage:', e);
+            }
+        }
+        
         if (eventId) {
             fetchData();
         }
     }, [eventId]);
+    
+    const isAdmin = userRole === 'ADMIN';
 
     useEffect(() => {
         if (eventId && activeTab === 'notifications') {
@@ -485,26 +500,65 @@ export const EventDetailTabs: React.FC = () => {
         }));
     };
 
+    const handleDownloadTemplate = async () => {
+        try {
+            const response = await axiosInstance.get('/activity-types/template', {
+                responseType: 'blob',
+            });
+            
+            // Создаем ссылку для скачивания
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'template_activity_types.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error: any) {
+            console.error('Error downloading template:', error);
+            alert('Ошибка при скачивании шаблона');
+        }
+    };
+
     const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
+
+        // Проверка формата файла
+        if (!file.name.toLowerCase().endsWith('.xlsx')) {
+            alert('Поддерживается только формат .xlsx');
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            return;
+        }
 
         const formData = new FormData();
         formData.append('file', file);
         formData.append('eventId', eventId!);
 
         try {
-            await axiosInstance.post('/activity-types/import', formData, {
+            const response = await axiosInstance.post('/activity-types/import', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            alert('Типы активностей успешно загружены из Excel!');
-            fetchData();
+            
+            const data = response.data;
+            if (data.success) {
+                const message = data.count > 0 
+                    ? `Успешно импортировано ${data.count} типов активностей`
+                    : 'Нет новых типов активностей для импорта';
+                alert(message);
+                fetchData();
+            } else {
+                alert(data.message || 'Ошибка при загрузке файла');
+            }
         } catch (error: any) {
             console.error('Error uploading Excel:', error);
-            const errorMessage = error.response?.data?.message || 'Ошибка при загрузке файла';
-            alert(errorMessage);
+            const errorMessage = error.response?.data?.message || error.response?.data || 'Ошибка при загрузке файла';
+            alert(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
         } finally {
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
@@ -574,8 +628,24 @@ export const EventDetailTabs: React.FC = () => {
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="bg-white rounded-3xl shadow-xl p-8 mb-6">
-                    <h1 className="text-4xl font-bold text-slate-900 mb-2">{event.name}</h1>
-                    <p className="text-slate-600">{event.description}</p>
+                    <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                            <h1 className="text-4xl font-bold text-slate-900 mb-2">{event.name}</h1>
+                            <p className="text-slate-600">{event.description}</p>
+                        </div>
+                        {!isAdmin && (
+                            <button
+                                onClick={() => {
+                                    const userId = localStorage.getItem('userId');
+                                    navigate(`/event/${eventId}/my-activities/${userId}`);
+                                }}
+                                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+                            >
+                                <ActivityIcon className="w-5 h-5" />
+                                Мои активности
+                            </button>
+                        )}
+                    </div>
 
                     {/* Tabs Navigation */}
                     <div className="flex gap-2 border-b border-slate-200 mt-6">
@@ -601,7 +671,7 @@ export const EventDetailTabs: React.FC = () => {
                             <ActivityIcon className="w-5 h-5" />
                             Типы активностей
                         </button>
-                        {event.requiresActivityApproval && (
+                        {isAdmin && event.requiresActivityApproval && (
                             <button
                                 onClick={() => setActiveTab('bonuses')}
                                 className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
@@ -614,39 +684,45 @@ export const EventDetailTabs: React.FC = () => {
                                 Бонусы и штрафы
                             </button>
                         )}
-                        <button
-                            onClick={() => setActiveTab('participants')}
-                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
-                                activeTab === 'participants'
-                                    ? 'text-blue-600 border-b-2 border-blue-600'
-                                    : 'text-slate-600 hover:text-blue-600'
-                            }`}
-                        >
-                            <UserCheck className="w-5 h-5" />
-                            {event.teamBasedCompetition ? 'Команды' : 'Участники'}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('notifications')}
-                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
-                                activeTab === 'notifications'
-                                    ? 'text-blue-600 border-b-2 border-blue-600'
-                                    : 'text-slate-600 hover:text-blue-600'
-                            }`}
-                        >
-                            <Bell className="w-5 h-5" />
-                            Уведомления
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('invitations')}
-                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
-                                activeTab === 'invitations'
-                                    ? 'text-blue-600 border-b-2 border-blue-600'
-                                    : 'text-slate-600 hover:text-blue-600'
-                            }`}
-                        >
-                            <Link className="w-5 h-5" />
-                            Приглашения
-                        </button>
+                        {isAdmin && (
+                            <button
+                                onClick={() => setActiveTab('participants')}
+                                className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
+                                    activeTab === 'participants'
+                                        ? 'text-blue-600 border-b-2 border-blue-600'
+                                        : 'text-slate-600 hover:text-blue-600'
+                                }`}
+                            >
+                                <UserCheck className="w-5 h-5" />
+                                {event.teamBasedCompetition ? 'Команды' : 'Участники'}
+                            </button>
+                        )}
+                        {isAdmin && (
+                            <button
+                                onClick={() => setActiveTab('notifications')}
+                                className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
+                                    activeTab === 'notifications'
+                                        ? 'text-blue-600 border-b-2 border-blue-600'
+                                        : 'text-slate-600 hover:text-blue-600'
+                                }`}
+                            >
+                                <Bell className="w-5 h-5" />
+                                Уведомления
+                            </button>
+                        )}
+                        {isAdmin && (
+                            <button
+                                onClick={() => setActiveTab('invitations')}
+                                className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all ${
+                                    activeTab === 'invitations'
+                                        ? 'text-blue-600 border-b-2 border-blue-600'
+                                        : 'text-slate-600 hover:text-blue-600'
+                                }`}
+                            >
+                                <Link className="w-5 h-5" />
+                                Приглашения
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -655,28 +731,41 @@ export const EventDetailTabs: React.FC = () => {
                     <div className="bg-white rounded-3xl shadow-xl p-8">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-slate-900">Настройки мероприятия</h2>
-                            <button
-                                onClick={() => {
-                                    if (isEditing) {
-                                        handleSaveEvent();
-                                    } else {
-                                        setIsEditing(true);
-                                    }
-                                }}
-                                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all flex items-center gap-2"
-                            >
-                                {isEditing ? (
-                                    <>
-                                        <Save className="w-5 h-5" />
-                                        Сохранить
-                                    </>
-                                ) : (
-                                    <>
-                                        <Edit className="w-5 h-5" />
-                                        Редактировать
-                                    </>
+                            <div className="flex items-center gap-3">
+                                {!isAdmin && (
+                                    <button
+                                        onClick={() => navigate(`/add-activity?eventId=${eventId}`)}
+                                        className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all flex items-center gap-2"
+                                    >
+                                        <Plus className="w-5 h-5" />
+                                        Добавить активность
+                                    </button>
                                 )}
-                            </button>
+                                {isAdmin && (
+                                    <button
+                                        onClick={() => {
+                                            if (isEditing) {
+                                                handleSaveEvent();
+                                            } else {
+                                                setIsEditing(true);
+                                            }
+                                        }}
+                                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all flex items-center gap-2"
+                                    >
+                                        {isEditing ? (
+                                            <>
+                                                <Save className="w-5 h-5" />
+                                                Сохранить
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Edit className="w-5 h-5" />
+                                                Редактировать
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {isEditing ? (
@@ -1021,30 +1110,50 @@ export const EventDetailTabs: React.FC = () => {
                                 Типы активностей ({activityTypes.length})
                             </h2>
                             <div className="flex gap-3">
-                                <button 
-                                    onClick={() => {
-                                        setEditingActivityType(null);
-                                        setShowActivityTypeModal(true);
-                                    }}
-                                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-purple-700 transition-all flex items-center gap-2"
-                                >
-                                    <Plus className="w-5 h-5" />
-                                    Добавить
-                                </button>
-                                <button 
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all flex items-center gap-2"
-                                >
-                                    <Upload className="w-5 h-5" />
-                                    Загрузить из Excel
-                                </button>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept=".xlsx,.xls"
-                                    onChange={handleExcelUpload}
-                                    className="hidden"
-                                />
+                                {!isAdmin && (
+                                    <button
+                                        onClick={() => navigate(`/add-activity?eventId=${eventId}`)}
+                                        className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all flex items-center gap-2"
+                                    >
+                                        <Plus className="w-5 h-5" />
+                                        Добавить активность
+                                    </button>
+                                )}
+                                {isAdmin && (
+                                    <>
+                                        <button 
+                                            onClick={() => {
+                                                setEditingActivityType(null);
+                                                setShowActivityTypeModal(true);
+                                            }}
+                                            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-purple-700 transition-all flex items-center gap-2"
+                                        >
+                                            <Plus className="w-5 h-5" />
+                                            Добавить
+                                        </button>
+                                        <button 
+                                            onClick={handleDownloadTemplate}
+                                            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all flex items-center gap-2"
+                                        >
+                                            <Download className="w-5 h-5" />
+                                            Скачать шаблон
+                                        </button>
+                                        <button 
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all flex items-center gap-2"
+                                        >
+                                            <Upload className="w-5 h-5" />
+                                            Загрузить из Excel
+                                        </button>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept=".xlsx,.xls"
+                                            onChange={handleExcelUpload}
+                                            className="hidden"
+                                        />
+                                    </>
+                                )}
                             </div>
                         </div>
                         <div className="space-y-3">
@@ -1061,22 +1170,24 @@ export const EventDetailTabs: React.FC = () => {
                                             <div className="text-xl font-bold text-green-600">
                                                 {type.defaultEnergy} баллов
                                             </div>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleEditActivityType(type)}
-                                                    className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all font-semibold"
-                                                    title="Редактировать"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteActivityType(type.id)}
-                                                    className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all font-semibold"
-                                                    title="Удалить"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
+                                            {isAdmin && (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleEditActivityType(type)}
+                                                        className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all font-semibold"
+                                                        title="Редактировать"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteActivityType(type.id)}
+                                                        className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all font-semibold"
+                                                        title="Удалить"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1086,12 +1197,12 @@ export const EventDetailTabs: React.FC = () => {
                 )}
 
                 {/* Bonuses Tab */}
-                {activeTab === 'bonuses' && event.requiresActivityApproval && (
+                {isAdmin && activeTab === 'bonuses' && event.requiresActivityApproval && (
                     <BonusManagement eventId={Number(eventId)} />
                 )}
 
                 {/* Participants/Teams Tab */}
-                {activeTab === 'participants' && (
+                {isAdmin && activeTab === 'participants' && (
                     <div className="bg-white rounded-3xl shadow-xl p-8">
                         {event.teamBasedCompetition ? (
                             <>
@@ -1177,7 +1288,7 @@ export const EventDetailTabs: React.FC = () => {
                 )}
 
                 {/* Notifications Tab */}
-                {activeTab === 'notifications' && (
+                {isAdmin && activeTab === 'notifications' && (
                     <div className="bg-white rounded-3xl shadow-xl p-8">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
@@ -1757,7 +1868,7 @@ export const EventDetailTabs: React.FC = () => {
                 )}
 
                 {/* Invitations Tab */}
-                {activeTab === 'invitations' && (
+                {isAdmin && activeTab === 'invitations' && (
                     <div className="space-y-6">
                         <div className="bg-white rounded-3xl shadow-xl p-8">
                             <EventInvitationManager eventId={Number(eventId)} eventName={event.name} />

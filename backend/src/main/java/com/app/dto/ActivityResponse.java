@@ -34,4 +34,5 @@ public class ActivityResponse {
     private String userReaction;
     private Integer totalReactions;
     private Integer commentCount;
+    private String status;
 }

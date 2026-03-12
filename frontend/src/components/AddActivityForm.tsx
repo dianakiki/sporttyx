@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { Activity, Upload, Image as ImageIcon } from 'lucide-react';
@@ -22,6 +22,11 @@ interface ActivityType {
 }
 
 export const AddActivityForm: React.FC = () => {
+    const [searchParams] = useSearchParams();
+    const eventIdFromUrl = searchParams.get('eventId');
+    const editActivityId = searchParams.get('edit');
+    const isEditMode = !!editActivityId;
+    
     const [teams, setTeams] = useState<Team[]>([]);
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
@@ -43,7 +48,62 @@ export const AddActivityForm: React.FC = () => {
 
     useEffect(() => {
         fetchUserTeamAndActivityTypes();
-    }, []);
+    }, [eventIdFromUrl]);
+
+    useEffect(() => {
+        if (isEditMode && editActivityId && activityTypes.length > 0) {
+            fetchActivityForEdit(parseInt(editActivityId));
+        }
+    }, [editActivityId, activityTypes.length]);
+
+    const fetchActivityForEdit = async (activityId: number) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/activities/${activityId}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            
+            if (response.ok) {
+                const activity = await response.json();
+                
+                // Fill form with activity data
+                setEnergy(activity.energy?.toString() || '');
+                setDescription(activity.description || '');
+                setDurationMinutes(activity.durationMinutes?.toString() || '');
+                
+                // Set activity type
+                const activityType = activityTypes.find(at => at.name === activity.type);
+                if (activityType) {
+                    setSelectedActivityTypeId(activityType.id.toString());
+                    setActivityTypeSearch(activityType.name);
+                }
+                
+                // Set team and load participants
+                if (activity.teamId) {
+                    setSelectedTeamId(activity.teamId.toString());
+                    // Fetch team participants will be triggered by useEffect
+                    // After participants are loaded, set selected participants
+                    setTimeout(() => {
+                        // This will be handled after participants are loaded
+                    }, 500);
+                }
+                
+                // Load existing photos as previews
+                if (activity.photoUrls && activity.photoUrls.length > 0) {
+                    setPhotoPreviews(activity.photoUrls);
+                } else if (activity.photoUrl) {
+                    setPhotoPreviews([activity.photoUrl]);
+                }
+            } else if (response.status === 401 || response.status === 403) {
+                setError('Нет прав на редактирование этой активности');
+            } else {
+                setError('Активность не найдена или уже одобрена');
+            }
+        } catch (err) {
+            console.error('Error fetching activity for edit:', err);
+            setError('Ошибка загрузки активности');
+        }
+    };
 
     useEffect(() => {
         if (selectedTeamId) {
@@ -68,6 +128,9 @@ export const AddActivityForm: React.FC = () => {
             const token = localStorage.getItem('token');
             const userId = localStorage.getItem('userId');
             
+            // Determine which event to use: from URL parameter or user's current event
+            const targetEventId = eventIdFromUrl || null;
+            
             // Fetch user's team and event
             const userResponse = await fetch(`/api/participants/${userId}`, {
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -75,24 +138,61 @@ export const AddActivityForm: React.FC = () => {
             
             if (userResponse.ok) {
                 const userData = await userResponse.json();
-                if (userData.teamId) {
+                
+                // If eventId is provided in URL, use it; otherwise use user's eventId
+                const eventIdToUse = targetEventId || userData.eventId;
+                
+                // Set team ID - if eventId is provided, try to find team for that event
+                // Otherwise use user's current team
+                if (targetEventId) {
+                    // Try to find user's team for this specific event
+                    // First, get all teams for this event
+                    try {
+                        const teamsResponse = await fetch(`/api/teams?eventId=${targetEventId}`, {
+                            headers: { 'Authorization': `Bearer ${token}` },
+                        });
+                        if (teamsResponse.ok) {
+                            const allTeams = await teamsResponse.json();
+                            // Find team where user is a member
+                            for (const team of allTeams) {
+                                const participantsResponse = await fetch(`/api/teams/${team.id}/participants`, {
+                                    headers: { 'Authorization': `Bearer ${token}` },
+                                });
+                                if (participantsResponse.ok) {
+                                    const teamParticipants = await participantsResponse.json();
+                                    const userInTeam = teamParticipants.some((p: any) => p.id.toString() === userId);
+                                    if (userInTeam) {
+                                        setSelectedTeamId(team.id.toString());
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error fetching teams for event:', err);
+                        // Fallback to user's current team if available
+                        if (userData.teamId) {
+                            setSelectedTeamId(userData.teamId.toString());
+                        }
+                    }
+                } else if (userData.teamId) {
                     setSelectedTeamId(userData.teamId.toString());
                 }
                 
                 // Fetch event info to check if it's team-based
-                if (userData.eventId) {
-                    const eventResponse = await fetch(`/api/events/${userData.eventId}`, {
+                if (eventIdToUse) {
+                    const eventResponse = await fetch(`/api/events/${eventIdToUse}`, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
                     
                     if (eventResponse.ok) {
                         const eventData = await eventResponse.json();
-                        setIsTeamBased(eventData.teamBasedCompetition !== false);
+                        setIsTeamBased(eventData.teamBasedCompetition === true);
                         setTrackActivityDuration(eventData.trackActivityDuration || false);
                     }
                     
-                    // Fetch activity types for the user's event
-                    const typesResponse = await fetch(`/api/activity-types?eventId=${userData.eventId}`, {
+                    // Fetch activity types for the event
+                    const typesResponse = await fetch(`/api/activity-types?eventId=${eventIdToUse}`, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
                     
@@ -220,13 +320,29 @@ export const AddActivityForm: React.FC = () => {
 
         // Validation based on event type
         if (isTeamBased) {
-            if (!selectedTeamId || selectedParticipantIds.length === 0 || !selectedActivityTypeId || !energy) {
-                setError('Заполните все обязательные поля');
+            if (!selectedTeamId) {
+                setError('Выберите команду');
+                return;
+            }
+            if (selectedParticipantIds.length === 0) {
+                setError('Выберите хотя бы одного участника');
+                return;
+            }
+            if (!selectedActivityTypeId) {
+                setError('Выберите тип активности из списка');
+                return;
+            }
+            if (!energy || parseInt(energy) <= 0) {
+                setError('Введите количество баллов (энергии)');
                 return;
             }
         } else {
-            if (!selectedActivityTypeId || !energy) {
-                setError('Заполните все обязательные поля');
+            if (!selectedActivityTypeId) {
+                setError('Выберите тип активности из списка');
+                return;
+            }
+            if (!energy || parseInt(energy) <= 0) {
+                setError('Введите количество баллов (энергии)');
                 return;
             }
         }
@@ -257,7 +373,10 @@ export const AddActivityForm: React.FC = () => {
                 });
             } else {
                 // For individual events: create activity for current user only
-                formData.append('teamId', selectedTeamId || '0'); // Some default if no team
+                // For individual events, teamId is optional - only send if available
+                if (selectedTeamId) {
+                    formData.append('teamId', selectedTeamId);
+                }
                 formData.append('participantId', userId || '');
             }
             
@@ -276,8 +395,13 @@ export const AddActivityForm: React.FC = () => {
                 formData.append('photos', newFile);
             });
 
-            const response = await fetch('/api/activities', {
-                method: 'POST',
+            const url = isEditMode 
+                ? `/api/activities/${editActivityId}`
+                : '/api/activities';
+            const method = isEditMode ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData,
             });
@@ -285,7 +409,10 @@ export const AddActivityForm: React.FC = () => {
             if (response.ok) {
                 navigate(-1);
             } else {
-                setError('Ошибка добавления активности');
+                const errorText = isEditMode 
+                    ? 'Ошибка обновления активности'
+                    : 'Ошибка добавления активности';
+                setError(errorText);
             }
         } catch (err) {
             setError('Ошибка подключения к серверу');
@@ -302,8 +429,12 @@ export const AddActivityForm: React.FC = () => {
                         <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
                             <Activity className="w-8 h-8 text-blue-600" />
                         </div>
-                        <h1 className="text-3xl font-bold text-slate-800 mb-2">Добавить активность</h1>
-                        <p className="text-slate-500">Зафиксируйте свою спортивную активность</p>
+                        <h1 className="text-3xl font-bold text-slate-800 mb-2">
+                            {isEditMode ? 'Редактировать активность' : 'Добавить активность'}
+                        </h1>
+                        <p className="text-slate-500">
+                            {isEditMode ? 'Измените данные активности' : 'Зафиксируйте свою спортивную активность'}
+                        </p>
                     </div>
 
                     <form onSubmit={handleSubmit}>
@@ -380,12 +511,25 @@ export const AddActivityForm: React.FC = () => {
                             )}
                         </div>
 
-                        {energy && (
-                            <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
-                                <p className="text-sm font-semibold text-blue-900 mb-1">Энергия за активность</p>
-                                <p className="text-2xl font-bold text-blue-600">{energy} баллов</p>
-                            </div>
-                        )}
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                Энергия (баллы) <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                value={energy}
+                                onChange={(e) => setEnergy(e.target.value)}
+                                placeholder="Введите количество баллов"
+                                min="0"
+                                required
+                                className="w-full px-5 py-4 rounded-xl bg-white border-2 border-slate-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 shadow-sm hover:border-slate-300"
+                            />
+                            {energy && (
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Баллы за эту активность: {energy}
+                                </p>
+                            )}
+                        </div>
 
                         {trackActivityDuration && (
                             <div className="mb-6">

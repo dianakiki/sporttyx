@@ -119,7 +119,7 @@ public class ActivityController {
      */
     @PostMapping("/activities")
     public ResponseEntity<CreateActivityResponse> createActivity(
-            @RequestParam Long teamId,
+            @RequestParam(required = false) Long teamId,
             @RequestParam Long participantId,
             @RequestParam String type,
             @RequestParam Integer energy,
@@ -130,6 +130,61 @@ public class ActivityController {
         CreateActivityResponse response = activityService.createActivity(
                 teamId, participantId, type, energy, description, durationMinutes, photos, participantIds);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+    
+    /**
+     * Обновить существующую активность
+     * 
+     * Обновляет активность только если она находится в статусе PENDING.
+     * Если активность уже одобрена, редактирование запрещено.
+     * 
+     * @param id идентификатор активности
+     * @param participantId идентификатор создателя активности
+     * @param type тип активности
+     * @param energy количество энергии/баллов
+     * @param description описание активности (опционально)
+     * @param durationMinutes длительность в минутах (опционально)
+     * @param photos список фотографий (опционально)
+     * @param participantIds список ID дополнительных участников (опционально)
+     * @return информация о обновленной активности
+     */
+    @PutMapping("/activities/{id}")
+    public ResponseEntity<CreateActivityResponse> updateActivity(
+            @PathVariable Long id,
+            @RequestParam Long participantId,
+            @RequestParam String type,
+            @RequestParam Integer energy,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) Integer durationMinutes,
+            @RequestParam(required = false) List<MultipartFile> photos,
+            @RequestParam(required = false) List<Long> participantIds) {
+        try {
+            CreateActivityResponse response = activityService.updateActivity(
+                    id, participantId, type, energy, description, durationMinutes, photos, participantIds);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    /**
+     * Получить активности пользователя по мероприятию
+     * 
+     * Возвращает все активности (включая ожидающие модерации) конкретного пользователя для конкретного мероприятия.
+     * 
+     * @param participantId ID участника
+     * @param eventId ID мероприятия
+     * @param userDetails данные аутентифицированного пользователя
+     * @return список активностей пользователя по мероприятию
+     */
+    @GetMapping("/participants/{participantId}/events/{eventId}/activities")
+    public ResponseEntity<List<ActivityResponse>> getParticipantEventActivities(
+            @PathVariable Long participantId,
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long currentUserId = getCurrentUserId(userDetails);
+        List<ActivityResponse> activities = activityService.getParticipantEventActivities(participantId, eventId, currentUserId);
+        return ResponseEntity.ok(activities);
     }
     
     /**

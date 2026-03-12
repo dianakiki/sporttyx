@@ -10,6 +10,7 @@ import java.util.Optional;
 @Repository
 public interface ActivityTypeRepository extends JpaRepository<ActivityType, Long> {
     Optional<ActivityType> findByName(String name);
+    Optional<ActivityType> findByNameAndEventId(String name, Long eventId);
     List<ActivityType> findAllByOrderByNameAsc();
     List<ActivityType> findByEventIdOrderByNameAsc(Long eventId);
 }

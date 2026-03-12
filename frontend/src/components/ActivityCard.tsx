@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, MessageCircle } from 'lucide-react';
+import { Trophy, MessageCircle, Edit } from 'lucide-react';
 import { ReactionPanel } from './ReactionPanel';
 import { PhotoCarousel, PhotoModal } from './PhotoCarousel';
 import { CommentPreview } from './CommentPreview';
@@ -36,15 +36,18 @@ interface ActivityCardProps {
         userReaction?: string;
         totalReactions?: number;
         commentCount?: number;
+        status?: string;
     };
     onReact?: (activityId: number, reactionType: string) => void;
     showSocialFeatures?: boolean;
+    onEdit?: (activityId: number) => void;
 }
 
 export const ActivityCard: React.FC<ActivityCardProps> = ({ 
     activity, 
     onReact,
-    showSocialFeatures = true 
+    showSocialFeatures = true,
+    onEdit
 }) => {
     const navigate = useNavigate();
     const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -134,7 +137,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         >
             {/* Post Header */}
             <div className="p-4 flex items-center justify-between border-b border-slate-100">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-1">
                     {activity.teamBasedCompetition && activity.teamAvatarUrl ? (
                         <img
                             src={activity.teamAvatarUrl}
@@ -197,8 +200,22 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                         </div>
                     </div>
                 </div>
-                <div className="text-sm text-slate-400">
-                    {formatTimeAgo(activity.createdAt)}
+                <div className="flex items-center gap-3">
+                    {activity.status === 'PENDING' && onEdit && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(activity.id);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Редактировать активность"
+                        >
+                            <Edit className="w-5 h-5" />
+                        </button>
+                    )}
+                    <div className="text-sm text-slate-400">
+                        {formatTimeAgo(activity.createdAt)}
+                    </div>
                 </div>
             </div>
 

@@ -14,10 +14,17 @@ import com.app.model.Team;
 import com.app.repository.ActivityPhotoRepository;
 import com.app.repository.ActivityRepository;
 import com.app.repository.ActivityTypeRepository;
+import com.app.repository.EventParticipantRepository;
 import com.app.repository.ParticipantRepository;
+import com.app.repository.TeamParticipantRepository;
 import com.app.repository.TeamRepository;
+import com.app.model.EventParticipant;
+import com.app.model.EventParticipantStatus;
+import com.app.model.TeamParticipant;
+import com.app.model.TeamRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -26,6 +33,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,10 +63,16 @@ public class ActivityService {
     @Autowired
     private ActivityCommentService activityCommentService;
     
+    @Autowired
+    private EventParticipantRepository eventParticipantRepository;
+    
+    @Autowired
+    private TeamParticipantRepository teamParticipantRepository;
+    
     /**
      * Получить все активности команды
      * 
-     * Возвращает только одобренные активности (APPROVED, AUTO_APPROVED).
+     * Возвращает активности со статусами APPROVED, AUTO_APPROVED и PENDING.
      * Включает информацию о реакциях текущего пользователя.
      * 
      * @param teamId идентификатор команды
@@ -66,8 +80,13 @@ public class ActivityService {
      * @return список активностей команды
      */
     public List<ActivityResponse> getTeamActivities(Long teamId, Long currentUserId) {
-        List<ActivityStatus> approvedStatuses = Arrays.asList(ActivityStatus.APPROVED, ActivityStatus.AUTO_APPROVED);
-        return activityRepository.findByTeamIdWithAdjustments(teamId, approvedStatuses).stream()
+        List<ActivityStatus> allowedStatuses = Arrays.asList(
+            ActivityStatus.APPROVED, 
+            ActivityStatus.AUTO_APPROVED, 
+            ActivityStatus.PENDING
+        );
+        return activityRepository.findByTeamIdWithAdjustments(teamId, allowedStatuses).stream()
+                .sorted(Comparator.comparing(Activity::getCreatedAt).reversed())
                 .map(a -> toActivityResponse(a, currentUserId))
                 .collect(Collectors.toList());
     }
@@ -130,6 +149,48 @@ public class ActivityService {
     }
     
     /**
+     * Получить активности пользователя по мероприятию
+     * 
+     * Возвращает все активности (включая ожидающие модерации) текущего пользователя для конкретного мероприятия.
+     * 
+     * @param participantId ID участника
+     * @param eventId ID мероприятия
+     * @param currentUserId ID текущего пользователя для получения его реакций
+     * @return список активностей пользователя по мероприятию
+     */
+    public List<ActivityResponse> getParticipantEventActivities(Long participantId, Long eventId, Long currentUserId) {
+        List<ActivityStatus> allStatuses = Arrays.asList(
+            ActivityStatus.PENDING, 
+            ActivityStatus.APPROVED, 
+            ActivityStatus.AUTO_APPROVED, 
+            ActivityStatus.REJECTED
+        );
+        
+        // Get all activities for participant with adjustments, then filter by event
+        List<Activity> allParticipantActivities = activityRepository.findByParticipantIdOrderByCreatedAtDesc(participantId);
+        
+        return allParticipantActivities.stream()
+                .filter(a -> {
+                    // Check if activity belongs to the event
+                    Event activityEvent = null;
+                    if (a.getTeam() != null && a.getTeam().getEvent() != null) {
+                        activityEvent = a.getTeam().getEvent();
+                    } else if (a.getActivityType() != null && a.getActivityType().getEvent() != null) {
+                        activityEvent = a.getActivityType().getEvent();
+                    }
+                    return activityEvent != null && activityEvent.getId().equals(eventId);
+                })
+                .filter(a -> allStatuses.contains(a.getStatus()))
+                .sorted(Comparator.comparing(Activity::getCreatedAt).reversed())
+                .map(a -> {
+                    // Load adjustments if needed
+                    Activity withAdjustments = activityRepository.findByIdWithAdjustments(a.getId());
+                    return toActivityResponse(withAdjustments != null ? withAdjustments : a, currentUserId);
+                })
+                .collect(Collectors.toList());
+    }
+    
+    /**
      * Получить активность по ID
      * 
      * Возвращает детальную информацию об активности, включая все фото,
@@ -178,24 +239,59 @@ public class ActivityService {
             throw new RuntimeException("Maximum 10 photos allowed per activity");
         }
         
-        Team team = teamRepository.findById(teamId)
-                .orElseThrow(() -> new RuntimeException("Team not found"));
-        
         Participant participant = participantRepository.findById(participantId)
                 .orElseThrow(() -> new RuntimeException("Participant not found"));
         
         ActivityType activityType = activityTypeRepository.findByName(type)
                 .orElseThrow(() -> new RuntimeException("Activity type not found: " + type));
         
+        Team team;
+        Event event;
+        
+        // If teamId is not provided, handle individual events
+        if (teamId == null) {
+            // Get event from activity type
+            event = activityType.getEvent();
+            if (event == null) {
+                throw new RuntimeException("Activity type must be associated with an event");
+            }
+            
+            // Check if event is individual (not team-based)
+            if (event.getTeamBasedCompetition() != null && event.getTeamBasedCompetition()) {
+                throw new RuntimeException("Team ID is required for team-based events");
+            }
+            
+            // For individual events, team is not required
+            team = null;
+        } else {
+            team = teamRepository.findById(teamId)
+                    .orElseThrow(() -> new RuntimeException("Team not found"));
+            event = team.getEvent();
+        }
+        
         Activity activity = new Activity();
-        activity.setTeam(team);
+        activity.setTeam(team); // Can be null for individual events
         activity.setParticipant(participant);
         activity.setActivityType(activityType);
         activity.setEnergy(energy);
         activity.setDescription(description);
         activity.setDurationMinutes(durationMinutes);
         
-        Event event = team.getEvent();
+        // Get event from activityType if team is null
+        if (event == null) {
+            event = activityType.getEvent();
+        }
+        
+        // Calculate points based on event settings
+        if (event != null && event.getTrackActivityDuration() != null && event.getTrackActivityDuration() 
+                && durationMinutes != null && durationMinutes > 0) {
+            // If trackActivityDuration is true: points = energy * durationMinutes / 60
+            activity.setPoints((long) (energy * durationMinutes / 60));
+        } else {
+            // If trackActivityDuration is false: points = energy
+            activity.setPoints((long) energy);
+        }
+        
         if (event != null && event.getRequiresActivityApproval()) {
             activity.setStatus(ActivityStatus.PENDING);
         } else {
@@ -243,6 +339,147 @@ public class ActivityService {
             }
             activityRepository.save(activity);
         }
+        
+        return new CreateActivityResponse(
+                activity.getId(),
+                activity.getActivityType().getName(),
+                activity.getEnergy(),
+                activity.getCreatedAt()
+        );
+    }
+    
+    /**
+     * Обновить существующую активность
+     * 
+     * Обновляет активность только если она находится в статусе PENDING.
+     * Если активность уже одобрена (APPROVED, AUTO_APPROVED), редактирование запрещено.
+     * 
+     * @param activityId ID активности для обновления
+     * @param participantId ID создателя активности (для проверки прав)
+     * @param type тип активности
+     * @param energy количество энергии/баллов
+     * @param description описание активности (опционально)
+     * @param durationMinutes длительность в минутах (опционально)
+     * @param photos список файлов фотографий (максимум 10)
+     * @param participantIds список ID дополнительных участников
+     * @return информация о обновленной активности
+     * @throws RuntimeException если активность не найдена, уже одобрена или нет прав на редактирование
+     */
+    @Transactional
+    public CreateActivityResponse updateActivity(Long activityId, Long participantId, String type, 
+                                                  Integer energy, String description, Integer durationMinutes, 
+                                                  List<MultipartFile> photos, List<Long> participantIds) {
+        Activity activity = activityRepository.findById(activityId)
+                .orElseThrow(() -> new RuntimeException("Activity not found"));
+        
+        // Проверка, что активность в статусе PENDING
+        if (activity.getStatus() != ActivityStatus.PENDING) {
+            throw new RuntimeException("Activity can only be edited when status is PENDING");
+        }
+        
+        // Проверка прав на редактирование:
+        // 1. Пользователь является создателем активности
+        // 2. ИЛИ пользователь является капитаном команды, к которой принадлежит активность
+        boolean isCreator = activity.getParticipant().getId().equals(participantId);
+        boolean isCaptain = false;
+        
+        if (!isCreator && activity.getTeam() != null) {
+            // Проверяем, является ли пользователь капитаном команды
+            Optional<TeamParticipant> teamParticipant = teamParticipantRepository
+                    .findByTeamIdAndParticipantId(activity.getTeam().getId(), participantId);
+            if (teamParticipant.isPresent() && teamParticipant.get().getRole() == TeamRole.CAPTAIN) {
+                isCaptain = true;
+            }
+        }
+        
+        if (!isCreator && !isCaptain) {
+            throw new RuntimeException("Only activity creator or team captain can edit the activity");
+        }
+        
+        // Validate photo count
+        if (photos != null && photos.size() > 10) {
+            throw new RuntimeException("Maximum 10 photos allowed per activity");
+        }
+        
+        ActivityType activityType = activityTypeRepository.findByName(type)
+                .orElseThrow(() -> new RuntimeException("Activity type not found: " + type));
+        
+        // Get event from activity
+        Event event = null;
+        if (activity.getTeam() != null && activity.getTeam().getEvent() != null) {
+            event = activity.getTeam().getEvent();
+        } else if (activityType.getEvent() != null) {
+            event = activityType.getEvent();
+        }
+        
+        // Update activity fields
+        activity.setActivityType(activityType);
+        activity.setEnergy(energy);
+        activity.setDescription(description);
+        activity.setDurationMinutes(durationMinutes);
+        
+        // Calculate points based on event settings
+        if (event != null && event.getTrackActivityDuration() != null && event.getTrackActivityDuration() 
+                && durationMinutes != null && durationMinutes > 0) {
+            // If trackActivityDuration is true: points = energy * durationMinutes / 60
+            activity.setPoints((long) (energy * durationMinutes / 60));
+        } else {
+            // If trackActivityDuration is false: points = energy
+            activity.setPoints((long) energy);
+        }
+        
+        // Update activity participants
+        if (participantIds != null && !participantIds.isEmpty()) {
+            // Remove existing participants (except creator)
+            activity.getActivityParticipants().removeIf(ap -> !ap.getParticipant().getId().equals(participantId));
+            
+            // Add new participants
+            for (Long pId : participantIds) {
+                if (pId.equals(participantId)) {
+                    continue; // Skip creator
+                }
+                Participant p = participantRepository.findById(pId)
+                        .orElseThrow(() -> new RuntimeException("Participant not found: " + pId));
+                
+                ActivityParticipant ap = new ActivityParticipant();
+                ap.setActivity(activity);
+                ap.setParticipant(p);
+                activity.getActivityParticipants().add(ap);
+            }
+        }
+        
+        // Update photos
+        if (photos != null && !photos.isEmpty()) {
+            // Delete existing photos
+            activityPhotoRepository.deleteByActivityId(activityId);
+            activity.setPhotoUrl(null);
+            
+            // Add new photos
+            int order = 0;
+            for (MultipartFile photo : photos) {
+                if (photo != null && !photo.isEmpty()) {
+                    try {
+                        String photoUrl = imageService.saveActivityImage(photo);
+                        
+                        ActivityPhoto activityPhoto = new ActivityPhoto();
+                        activityPhoto.setActivity(activity);
+                        activityPhoto.setPhotoUrl(photoUrl);
+                        activityPhoto.setDisplayOrder(order++);
+                        activityPhotoRepository.save(activityPhoto);
+                        
+                        if (activity.getPhotoUrl() == null) {
+                            activity.setPhotoUrl(photoUrl);
+                        }
+                    } catch (IOException e) {
+                        System.err.println("Failed to save activity photo: " + e.getMessage());
+                        e.printStackTrace();
+                        throw new RuntimeException("Failed to save activity photo: " + e.getMessage(), e);
+                    }
+                }
+            }
+        }
+        
+        activity = activityRepository.save(activity);
         
         return new CreateActivityResponse(
                 activity.getId(),
@@ -319,8 +556,16 @@ public class ActivityService {
                 .map(ActivityPhoto::getPhotoUrl)
                 .collect(Collectors.toList());
         
-        Boolean teamBased = a.getTeam() != null && a.getTeam().getEvent() != null 
-                ? a.getTeam().getEvent().getTeamBasedCompetition() 
+        // Get event from team or activityType
+        Event event = null;
+        if (a.getTeam() != null && a.getTeam().getEvent() != null) {
+            event = a.getTeam().getEvent();
+        } else if (a.getActivityType() != null && a.getActivityType().getEvent() != null) {
+            event = a.getActivityType().getEvent();
+        }
+        
+        Boolean teamBased = event != null && event.getTeamBasedCompetition() != null 
+                ? event.getTeamBasedCompetition() 
                 : true;
         
         Map<String, Integer> reactionCounts = activityReactionService.getReactionCounts(a.getId());
@@ -333,15 +578,12 @@ public class ActivityService {
         Long commentCountLong = activityCommentService.getCommentCount(a.getId());
         Integer commentCount = commentCountLong != null ? commentCountLong.intValue() : 0;
         
-        Long eventId = null;
-        String eventName = null;
-        if (a.getTeam() != null && a.getTeam().getEvent() != null) {
-            eventId = a.getTeam().getEvent().getId();
-            eventName = a.getTeam().getEvent().getName();
-        }
+        Long eventId = event != null ? event.getId() : null;
+        String eventName = event != null ? event.getName() : null;
         
         // Calculate final points including bonus/penalty adjustments
-        Integer finalPoints = a.getEnergy();
+        // Use points field if available, otherwise fallback to energy
+        Integer finalPoints = a.getPoints() != null ? a.getPoints().intValue() : a.getEnergy();
         if (a.getAdjustments() != null && !a.getAdjustments().isEmpty()) {
             for (var adjustment : a.getAdjustments()) {
                 if (adjustment.getBonusType() != null) {
@@ -378,7 +620,8 @@ public class ActivityService {
                 reactionCounts,
                 userReaction,
                 totalReactions,
-                commentCount
+                commentCount,
+                a.getStatus() != null ? a.getStatus().name() : null
         );
         
         return response;

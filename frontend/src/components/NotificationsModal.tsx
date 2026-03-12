@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Users, Check, X, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { Bell, Users, Check, X, CheckCircle, XCircle, Trash2, CheckCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import axiosInstance from '../api/axiosConfig';
 
 interface TeamInvitation {
     id: number;
@@ -61,18 +62,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
 
     const fetchNotifications = async () => {
         try {
-            const token = localStorage.getItem('token');
-            
-            const response = await fetch('/api/notifications', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setNotifications(data);
-            }
+            const response = await axiosInstance.get('/notifications');
+            setNotifications(response.data);
         } catch (err) {
             console.error('Error fetching notifications:', err);
         } finally {
@@ -118,37 +109,28 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
 
     const handleMarkAsRead = async (notificationId: number) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/notifications/${notificationId}/read`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                setNotifications(notifications.map(n => 
-                    n.id === notificationId ? { ...n, isRead: true } : n
-                ));
-            }
+            await axiosInstance.put(`/notifications/${notificationId}/read`);
+            setNotifications(notifications.map(n => 
+                n.id === notificationId ? { ...n, isRead: true } : n
+            ));
         } catch (err) {
             console.error('Error marking notification as read:', err);
         }
     };
 
+    const handleMarkAllAsRead = async () => {
+        try {
+            await axiosInstance.put('/notifications/read-all');
+            setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+        } catch (err) {
+            console.error('Error marking all notifications as read:', err);
+        }
+    };
+
     const handleDeleteNotification = async (notificationId: number) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/notifications/${notificationId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                setNotifications(notifications.filter(n => n.id !== notificationId));
-            }
+            await axiosInstance.delete(`/notifications/${notificationId}`);
+            setNotifications(notifications.filter(n => n.id !== notificationId));
         } catch (err) {
             console.error('Error deleting notification:', err);
         }
@@ -174,7 +156,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
             <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
             <div className="fixed top-20 right-6 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 max-h-[80vh] overflow-hidden flex flex-col">
                 <div className="p-6 border-b border-slate-200">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <Bell className="w-6 h-6 text-blue-600" />
                             <h2 className="text-2xl font-bold text-slate-900">Уведомления</h2>
@@ -191,6 +173,15 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                             <X className="w-5 h-5 text-slate-600" />
                         </button>
                     </div>
+                    {notifications.filter(n => !n.isRead).length > 0 && (
+                        <button
+                            onClick={handleMarkAllAsRead}
+                            className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2 text-sm"
+                        >
+                            <CheckCheck className="w-4 h-4" />
+                            Отметить все как прочитанные
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6">
@@ -247,16 +238,30 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                                                     })}
                                                 </p>
                                             </div>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteNotification(notification.id);
-                                                }}
-                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                title="Удалить"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex gap-1">
+                                                {!notification.isRead && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleMarkAsRead(notification.id);
+                                                        }}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                        title="Отметить как прочитанное"
+                                                    >
+                                                        <Check className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteNotification(notification.id);
+                                                    }}
+                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                    title="Удалить"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 );

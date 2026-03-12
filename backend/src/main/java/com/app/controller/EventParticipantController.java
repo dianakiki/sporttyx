@@ -53,6 +53,38 @@ public class EventParticipantController {
         return ResponseEntity.ok(invitations);
     }
     
+    @PostMapping("/events/{eventId}/join")
+    public ResponseEntity<EventParticipantResponse> joinEvent(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            Long participantId = getCurrentUserId(userDetails);
+            if (participantId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            EventParticipantResponse response = eventParticipantService.joinEvent(eventId, participantId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    @GetMapping("/events/{eventId}/is-participant")
+    public ResponseEntity<Boolean> isParticipant(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            Long participantId = getCurrentUserId(userDetails);
+            if (participantId == null) {
+                return ResponseEntity.ok(false);
+            }
+            boolean isParticipant = eventParticipantService.isParticipantInEvent(eventId, participantId);
+            return ResponseEntity.ok(isParticipant);
+        } catch (Exception e) {
+            return ResponseEntity.ok(false);
+        }
+    }
+    
     @PostMapping("/event-invitations/{id}/accept")
     public ResponseEntity<EventParticipantResponse> acceptInvitation(
             @PathVariable Long id,

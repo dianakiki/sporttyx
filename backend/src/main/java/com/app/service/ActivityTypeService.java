@@ -85,20 +85,67 @@ public class ActivityTypeService {
                 .orElseThrow(() -> new RuntimeException("Event not found"));
         
         List<ActivityType> activityTypes = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
         
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
             
-            // Skip header row (row 0)
+            if (sheet.getLastRowNum() < 1) {
+                throw new RuntimeException("Файл должен содержать хотя бы заголовок и одну строку данных");
+            }
+            
+            // Читаем заголовки из первой строки
+            Row headerRow = sheet.getRow(0);
+            if (headerRow == null) {
+                throw new RuntimeException("Не найдена строка заголовков");
+            }
+            
+            // Определяем индексы столбцов по заголовкам
+            int nameColumnIndex = -1;
+            int descriptionColumnIndex = -1;
+            int energyColumnIndex = -1;
+            
+            for (int i = 0; i <= headerRow.getLastCellNum(); i++) {
+                Cell cell = headerRow.getCell(i);
+                if (cell == null) continue;
+                
+                String headerValue = getCellValueAsString(cell).trim().toLowerCase();
+                
+                // Поддержка русских и английских названий
+                if (nameColumnIndex == -1 && (headerValue.contains("название") || 
+                    headerValue.contains("name") || headerValue.contains("активность") || 
+                    headerValue.contains("activity") || headerValue.contains("тип") || 
+                    headerValue.contains("type"))) {
+                    nameColumnIndex = i;
+                } else if (descriptionColumnIndex == -1 && (headerValue.contains("описание") || 
+                    headerValue.contains("description") || headerValue.contains("опис"))) {
+                    descriptionColumnIndex = i;
+                } else if (energyColumnIndex == -1 && (headerValue.contains("балл") || 
+                    headerValue.contains("points") || headerValue.contains("энергия") || 
+                    headerValue.contains("energy") || headerValue.contains("очки") || 
+                    headerValue.contains("score"))) {
+                    energyColumnIndex = i;
+                }
+            }
+            
+            // Если не нашли столбцы по заголовкам, используем позиции по умолчанию (0, 1, 2)
+            if (nameColumnIndex == -1) {
+                nameColumnIndex = 0;
+                descriptionColumnIndex = 1;
+                energyColumnIndex = 2;
+            }
+            
+            // Обрабатываем данные, начиная со второй строки
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
                 
-                Cell nameCell = row.getCell(0);
-                Cell descriptionCell = row.getCell(1);
-                Cell energyCell = row.getCell(2);
+                Cell nameCell = row.getCell(nameColumnIndex);
+                Cell descriptionCell = descriptionColumnIndex >= 0 ? row.getCell(descriptionColumnIndex) : null;
+                Cell energyCell = energyColumnIndex >= 0 ? row.getCell(energyColumnIndex) : null;
                 
                 if (nameCell == null || getCellValueAsString(nameCell).trim().isEmpty()) {
+                    errors.add("Строка " + (i + 1) + ": пропущена (нет названия активности)");
                     continue;
                 }
                 
@@ -106,8 +153,20 @@ public class ActivityTypeService {
                 String description = descriptionCell != null ? getCellValueAsString(descriptionCell).trim() : "";
                 Integer defaultEnergy = energyCell != null ? (int) getCellValueAsNumber(energyCell) : 0;
                 
-                // Check if activity type already exists
-                if (activityTypeRepository.findByName(name).isPresent()) {
+                // Валидация
+                if (name.length() > 200) {
+                    errors.add("Строка " + (i + 1) + ": название слишком длинное (максимум 200 символов)");
+                    continue;
+                }
+                
+                if (defaultEnergy < 0) {
+                    errors.add("Строка " + (i + 1) + ": баллы не могут быть отрицательными, установлено 0");
+                    defaultEnergy = 0;
+                }
+                
+                // Проверяем, существует ли тип активности с таким именем для этого события
+                if (activityTypeRepository.findByNameAndEventId(name, eventId).isPresent()) {
+                    errors.add("Строка " + (i + 1) + ": тип активности '" + name + "' уже существует для этого события");
                     continue;
                 }
                 
@@ -123,6 +182,13 @@ public class ActivityTypeService {
         
         if (!activityTypes.isEmpty()) {
             activityTypeRepository.saveAll(activityTypes);
+        }
+        
+        // Если были ошибки, выбрасываем исключение с информацией
+        if (!errors.isEmpty()) {
+            String errorMessage = "Импортировано: " + activityTypes.size() + ". Ошибки:\n" + 
+                String.join("\n", errors);
+            throw new RuntimeException(errorMessage);
         }
         
         return activityTypes.size();

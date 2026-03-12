@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Users, Check, X, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { Bell, Users, Check, X, CheckCircle, XCircle, Trash2, CheckCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/Button';
+import axiosInstance from '../api/axiosConfig';
 
 interface TeamInvitation {
     id: number;
@@ -114,21 +115,21 @@ export const Notifications: React.FC = () => {
 
     const handleMarkAsRead = async (notificationId: number) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/notifications/${notificationId}/read`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                setNotifications(notifications.map(n => 
-                    n.id === notificationId ? { ...n, isRead: true } : n
-                ));
-            }
+            await axiosInstance.put(`/notifications/${notificationId}/read`);
+            setNotifications(notifications.map(n => 
+                n.id === notificationId ? { ...n, isRead: true } : n
+            ));
         } catch (err) {
             console.error('Error marking notification as read:', err);
+        }
+    };
+
+    const handleMarkAllAsRead = async () => {
+        try {
+            await axiosInstance.put('/notifications/read-all');
+            setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+        } catch (err) {
+            console.error('Error marking all notifications as read:', err);
         }
     };
 
@@ -176,13 +177,24 @@ export const Notifications: React.FC = () => {
 
     return (
         <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center gap-2 mb-4">
-                <Bell className="w-6 h-6 text-blue-600" />
-                <h2 className="text-2xl font-bold text-slate-900">Уведомления</h2>
-                {totalUnread > 0 && (
-                    <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
-                        {totalUnread}
-                    </span>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <Bell className="w-6 h-6 text-blue-600" />
+                    <h2 className="text-2xl font-bold text-slate-900">Уведомления</h2>
+                    {totalUnread > 0 && (
+                        <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                            {totalUnread}
+                        </span>
+                    )}
+                </div>
+                {notifications.filter(n => !n.isRead).length > 0 && (
+                    <button
+                        onClick={handleMarkAllAsRead}
+                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2 text-sm"
+                    >
+                        <CheckCheck className="w-4 h-4" />
+                        Отметить все как прочитанные
+                    </button>
                 )}
             </div>
 
@@ -238,16 +250,30 @@ export const Notifications: React.FC = () => {
                                             })}
                                         </p>
                                     </div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteNotification(notification.id);
-                                        }}
-                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                        title="Удалить"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    <div className="flex gap-1">
+                                        {!notification.isRead && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleMarkAsRead(notification.id);
+                                                }}
+                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                title="Отметить как прочитанное"
+                                            >
+                                                <Check className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteNotification(notification.id);
+                                            }}
+                                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                            title="Удалить"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         );

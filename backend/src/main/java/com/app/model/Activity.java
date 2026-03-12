@@ -21,8 +21,8 @@ public class Activity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "team_id")
     private Team team;
     
     @ManyToOne(fetch = FetchType.LAZY)
@@ -38,6 +38,9 @@ public class Activity {
     
     @Column(name = "duration_minutes")
     private Integer durationMinutes;
+    
+    @Column(name = "points")
+    private Long points;
     
     @Column(columnDefinition = "TEXT")
     private String description;

@@ -17,8 +17,10 @@ interface Activity {
     energy: number;
     createdAt: string;
     participantName: string;
+    participantId?: number;
     photoUrl?: string;
     photoUrls?: string[];
+    status?: string;
 }
 
 interface Team {
@@ -42,10 +44,48 @@ export const MyTeam: React.FC = () => {
     const [activities, setActivities] = useState<Activity[]>([]);
     const [heatmapData, setHeatmapData] = useState<ActivityHeatmapData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [activeEventId, setActiveEventId] = useState<number | null>(null);
+    const [isCaptain, setIsCaptain] = useState(false);
 
     useEffect(() => {
+        fetchActiveEvent();
         fetchTeamData();
     }, []);
+
+    const fetchActiveEvent = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            // Сначала пытаемся получить отображаемое мероприятие
+            const displayedResponse = await fetch('/api/events/displayed', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (displayedResponse.ok && displayedResponse.status !== 204) {
+                const displayedEvent = await displayedResponse.json();
+                if (displayedEvent && displayedEvent.id) {
+                    setActiveEventId(displayedEvent.id);
+                    return;
+                }
+            }
+            
+            // Если нет отображаемого, получаем активные мероприятия
+            const activeResponse = await fetch('/api/events/active', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (activeResponse.ok) {
+                const activeEvents = await activeResponse.json();
+                if (activeEvents && activeEvents.length > 0) {
+                    // Берем первое активное мероприятие
+                    setActiveEventId(activeEvents[0].id);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching active event:', error);
+        }
+    };
 
     const fetchTeamData = async () => {
         try {
@@ -85,6 +125,17 @@ export const MyTeam: React.FC = () => {
                 const teamData = await teamResponse.json();
                 setTeam(teamData);
                 setParticipants(teamData.participants || []);
+                
+                // Check if current user is captain
+                const currentUserParticipant = teamData.participants?.find(
+                    (p: Participant) => p.id.toString() === userId
+                );
+                const role = currentUserParticipant?.role;
+                setIsCaptain(
+                    role === 'CAPTAIN' || 
+                    role === 'Капитан' || 
+                    role === 'КАПИТАН'
+                );
             }
 
             // Fetch activities
@@ -94,7 +145,13 @@ export const MyTeam: React.FC = () => {
 
             if (activitiesResponse.ok) {
                 const activitiesData = await activitiesResponse.json();
-                setActivities(activitiesData);
+                // Sort activities by creation date (newest first)
+                const sortedActivities = activitiesData.sort((a: Activity, b: Activity) => {
+                    const dateA = new Date(a.createdAt).getTime();
+                    const dateB = new Date(b.createdAt).getTime();
+                    return dateB - dateA;
+                });
+                setActivities(sortedActivities);
             }
 
             // Fetch activity heatmap
@@ -258,7 +315,12 @@ export const MyTeam: React.FC = () => {
                                 Активности
                             </h2>
                             <button
-                                onClick={() => navigate('/add-activity')}
+                                onClick={() => {
+                                    const url = activeEventId 
+                                        ? `/add-activity?eventId=${activeEventId}`
+                                        : '/add-activity';
+                                    navigate(url);
+                                }}
                                 className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all"
                             >
                                 <Plus className="w-4 h-4" />
@@ -272,6 +334,12 @@ export const MyTeam: React.FC = () => {
                                     key={activity.id}
                                     activity={activity}
                                     showSocialFeatures={false}
+                                    onEdit={activity.status === 'PENDING' ? ((activityId) => {
+                                        const url = activeEventId 
+                                            ? `/add-activity?eventId=${activeEventId}&edit=${activityId}`
+                                            : `/add-activity?edit=${activityId}`;
+                                        navigate(url);
+                                    }) : undefined}
                                 />
                             ))}
                         </div>
@@ -281,7 +349,12 @@ export const MyTeam: React.FC = () => {
                                 <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                                 <p className="text-slate-500 text-lg">Активностей пока нет</p>
                                 <Button
-                                    onClick={() => navigate('/add-activity')}
+                                    onClick={() => {
+                                        const url = activeEventId 
+                                            ? `/add-activity?eventId=${activeEventId}`
+                                            : '/add-activity';
+                                        navigate(url);
+                                    }}
                                     className="w-auto mt-4"
                                 >
                                     Добавить первую активность

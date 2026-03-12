@@ -79,3 +79,5 @@ databaseChangeLog:
       file: db/changelog/changes/040-add-image-url-to-events.yaml
   - include:
       file: db/changelog/changes/041-create-event-news-table.yaml
+  - include:
+      file: db/changelog/changes/044-add-points-to-activities.yaml

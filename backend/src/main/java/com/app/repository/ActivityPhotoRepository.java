@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface ActivityPhotoRepository extends JpaRepository<ActivityPhoto, Long> {
     List<ActivityPhoto> findByActivityIdOrderByDisplayOrderAsc(Long activityId);
+    void deleteByActivityId(Long activityId);
 }

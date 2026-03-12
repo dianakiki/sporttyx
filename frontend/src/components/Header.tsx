@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Users, User, LogOut, BarChart3, Plus, Shield, Bell } from 'lucide-react';
+import { Home, Users, User, LogOut, BarChart3, Plus, Shield, Bell, Calendar } from 'lucide-react';
 import { TeamSelectionModal } from './TeamSelectionModal';
 import { NotificationsModal } from './NotificationsModal';
 
@@ -15,6 +15,8 @@ export const Header: React.FC = () => {
     const [moderationEnabled, setModerationEnabled] = useState(false);
     const [hasJoinedEvent, setHasJoinedEvent] = useState(false);
     const [isTeamBasedEvent, setIsTeamBasedEvent] = useState(false);
+    const [activeEventId, setActiveEventId] = useState<number | null>(null);
+    const [hasActiveTeamEvent, setHasActiveTeamEvent] = useState(false);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -78,6 +80,12 @@ export const Header: React.FC = () => {
                     // Check if any of the events is team-based
                     const hasTeamEvent = events.some((event: any) => event.teamBasedCompetition);
                     setIsTeamBasedEvent(hasTeamEvent);
+                    
+                    // Check if user has active team-based event
+                    const hasActiveTeamBasedEvent = events.some((event: any) => 
+                        event.teamBasedCompetition && event.status === 'ACTIVE'
+                    );
+                    setHasActiveTeamEvent(hasActiveTeamBasedEvent);
                 }
             } catch (err) {
                 console.error('Error fetching user team:', err);
@@ -86,10 +94,46 @@ export const Header: React.FC = () => {
 
         fetchUserTeam();
         fetchUnreadCount();
+        fetchActiveEvent();
         
         const interval = setInterval(fetchUnreadCount, 30000);
         return () => clearInterval(interval);
     }, []);
+
+    const fetchActiveEvent = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            // Сначала пытаемся получить отображаемое мероприятие
+            const displayedResponse = await fetch('/api/events/displayed', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (displayedResponse.ok && displayedResponse.status !== 204) {
+                const displayedEvent = await displayedResponse.json();
+                if (displayedEvent && displayedEvent.id) {
+                    setActiveEventId(displayedEvent.id);
+                    return;
+                }
+            }
+            
+            // Если нет отображаемого, получаем активные мероприятия
+            const activeResponse = await fetch('/api/events/active', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (activeResponse.ok) {
+                const activeEvents = await activeResponse.json();
+                // Берем первое активное мероприятие
+                if (activeEvents && activeEvents.length > 0 && activeEvents[0].id) {
+                    setActiveEventId(activeEvents[0].id);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching active event:', err);
+        }
+    };
 
     const fetchUnreadCount = async () => {
         try {
@@ -173,9 +217,22 @@ export const Header: React.FC = () => {
                             <span className="text-xl font-bold hidden sm:block">DiaEvent</span>
                         </button>
 
+                        <button
+                            onClick={() => navigate('/my-events')}
+                            className="flex items-center gap-2 px-4 py-2.5 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl font-semibold transition-all"
+                        >
+                            <Calendar className="w-5 h-5" />
+                            <span className="hidden md:inline">Мероприятия</span>
+                        </button>
+
                         {hasJoinedEvent && (
                             <button
-                                onClick={() => navigate('/add-activity')}
+                                onClick={() => {
+                                    const url = activeEventId 
+                                        ? `/add-activity?eventId=${activeEventId}`
+                                        : '/add-activity';
+                                    navigate(url);
+                                }}
                                 className="flex items-center gap-2 px-4 py-2.5 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl font-semibold transition-all"
                             >
                                 <Plus className="w-5 h-5" />
@@ -205,7 +262,7 @@ export const Header: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {hasJoinedEvent && isTeamBasedEvent && (
+                        {hasActiveTeamEvent && (
                             <button
                                 onClick={handleMyTeamClick}
                                 className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all"

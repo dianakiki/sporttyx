@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { UserPlus } from 'lucide-react';
+import { api } from '../api/api';
 
 export const RegistrationForm: React.FC = () => {
     const [name, setName] = useState('');
@@ -42,25 +43,16 @@ export const RegistrationForm: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, password, name: name.trim() }),
+            const result = await api.auth.register({ 
+                username, 
+                password, 
+                name: name.trim() 
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('userId', data.userId);
-                navigate('/');
-            } else {
-                const data = await response.json();
-                setError(data.message || 'Ошибка регистрации');
-            }
-        } catch (err) {
-            setError('Ошибка подключения к серверу');
+            localStorage.setItem('token', result.token);
+            localStorage.setItem('userId', result.user.id);
+            navigate('/');
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message || 'Ошибка регистрации');
         } finally {
             setIsLoading(false);
         }

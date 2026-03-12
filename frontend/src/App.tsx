@@ -21,6 +21,8 @@ import { HomePage } from './components/HomePage';
 import { EventDetailTabs } from './components/EventDetailTabs';
 import { EventCard } from './components/EventCard';
 import { ModerationPanel } from './components/ModerationPanel';
+import { MyEvents } from './components/MyEvents';
+import { MyEventActivities } from './components/MyEventActivities';
 import { MainLayout } from './layouts/MainLayout';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -200,6 +202,26 @@ function App() {
             <PrivateRoute>
               <MainLayout>
                 <ModerationPanel />
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/my-events"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <MyEvents />
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/event/:eventId/my-activities/:participantId"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <MyEventActivities />
               </MainLayout>
             </PrivateRoute>
           }

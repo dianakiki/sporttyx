@@ -236,8 +236,19 @@ public class ModerationService {
             ));
         }
         
-        // Get total team participants count
-        int totalTeamParticipants = teamParticipantRepository.findByTeamId(activity.getTeam().getId()).size();
+        // Get total team participants count (only for team-based activities)
+        int totalTeamParticipants = 0;
+        if (activity.getTeam() != null) {
+            totalTeamParticipants = teamParticipantRepository.findByTeamId(activity.getTeam().getId()).size();
+        }
+        
+        // Get event from team or activityType
+        Event event = null;
+        if (activity.getTeam() != null && activity.getTeam().getEvent() != null) {
+            event = activity.getTeam().getEvent();
+        } else if (activity.getActivityType() != null && activity.getActivityType().getEvent() != null) {
+            event = activity.getActivityType().getEvent();
+        }
         
         return new ActivityModerationResponse(
                 activity.getId(),
@@ -245,10 +256,10 @@ public class ModerationService {
                 activity.getEnergy(),
                 activity.getParticipant().getName(),
                 activity.getParticipant().getId(),
-                activity.getTeam().getName(),
-                activity.getTeam().getId(),
-                activity.getTeam().getEvent() != null ? activity.getTeam().getEvent().getName() : null,
-                activity.getTeam().getEvent() != null ? activity.getTeam().getEvent().getId() : null,
+                activity.getTeam() != null ? activity.getTeam().getName() : null,
+                activity.getTeam() != null ? activity.getTeam().getId() : null,
+                event != null ? event.getName() : null,
+                event != null ? event.getId() : null,
                 photoUrls,
                 activity.getStatus(),
                 activity.getCreatedAt(),

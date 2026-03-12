@@ -37,6 +37,30 @@ public interface ActivityRepository extends JpaRepository<Activity, Long>, JpaSp
     @Query("SELECT DISTINCT a FROM Activity a LEFT JOIN FETCH a.adjustments adj LEFT JOIN FETCH adj.bonusType WHERE a.team.id = :teamId AND a.status IN :statuses ORDER BY a.createdAt DESC")
     List<Activity> findByTeamIdWithAdjustments(@Param("teamId") Long teamId, @Param("statuses") List<ActivityStatus> statuses);
     
-    @Query("SELECT DISTINCT a FROM Activity a LEFT JOIN FETCH a.adjustments adj LEFT JOIN FETCH adj.bonusType WHERE a.team.event.id = :eventId AND a.status IN :statuses ORDER BY a.createdAt DESC")
+    @Query("SELECT DISTINCT a FROM Activity a " +
+           "LEFT JOIN FETCH a.adjustments adj LEFT JOIN FETCH adj.bonusType " +
+           "LEFT JOIN FETCH a.team t LEFT JOIN FETCH t.event " +
+           "LEFT JOIN FETCH a.activityType at LEFT JOIN FETCH at.event " +
+           "WHERE (" +
+           "  (a.team IS NOT NULL AND a.team.event IS NOT NULL AND a.team.event.id = :eventId) OR " +
+           "  (a.team IS NULL AND a.activityType.event IS NOT NULL AND a.activityType.event.id = :eventId)" +
+           ") " +
+           "AND a.status IN :statuses ORDER BY a.createdAt DESC")
     List<Activity> findByEventIdWithAdjustments(@Param("eventId") Long eventId, @Param("statuses") List<ActivityStatus> statuses);
+    
+    @Query("SELECT DISTINCT a FROM Activity a " +
+           "LEFT JOIN FETCH a.adjustments adj LEFT JOIN FETCH adj.bonusType " +
+           "LEFT JOIN FETCH a.team t LEFT JOIN FETCH t.event " +
+           "LEFT JOIN FETCH a.activityType at LEFT JOIN FETCH at.event " +
+           "WHERE a.participant.id = :participantId " +
+           "AND (" +
+           "  (a.team IS NOT NULL AND a.team.event IS NOT NULL AND a.team.event.id = :eventId) OR " +
+           "  (a.team IS NULL AND a.activityType.event IS NOT NULL AND a.activityType.event.id = :eventId)" +
+           ") " +
+           "AND a.status IN :statuses ORDER BY a.createdAt DESC")
+    List<Activity> findByParticipantIdAndEventIdWithAdjustments(
+        @Param("participantId") Long participantId, 
+        @Param("eventId") Long eventId, 
+        @Param("statuses") List<ActivityStatus> statuses
+    );
 }

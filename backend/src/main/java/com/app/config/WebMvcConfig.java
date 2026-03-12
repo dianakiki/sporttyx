@@ -21,10 +21,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOriginPatterns("*")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
+        // CORS is handled by SecurityConfig, so we don't configure it here to avoid conflicts
+        // SecurityConfig uses CorsConfigurationSource which takes precedence
     }
 }

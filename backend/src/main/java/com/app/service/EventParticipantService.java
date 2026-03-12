@@ -160,6 +160,38 @@ public class EventParticipantService {
         );
     }
     
+    public EventParticipantResponse joinEvent(Long eventId, Long participantId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found"));
+        
+        Participant participant = participantRepository.findById(participantId)
+                .orElseThrow(() -> new RuntimeException("Participant not found"));
+        
+        // Check if already participating
+        Optional<EventParticipant> existingOpt = eventParticipantRepository.findByEventIdAndParticipantId(eventId, participantId);
+        
+        if (existingOpt.isPresent()) {
+            EventParticipant existing = existingOpt.get();
+            if (existing.getStatus() == EventParticipantStatus.ACCEPTED) {
+                throw new RuntimeException("Already participating in this event");
+            }
+            // Update existing record
+            existing.setStatus(EventParticipantStatus.ACCEPTED);
+            existing.setJoinedAt(LocalDateTime.now());
+            existing = eventParticipantRepository.save(existing);
+            return toEventParticipantResponse(existing);
+        } else {
+            // Create new participation
+            EventParticipant newParticipation = new EventParticipant();
+            newParticipation.setEvent(event);
+            newParticipation.setParticipant(participant);
+            newParticipation.setStatus(EventParticipantStatus.ACCEPTED);
+            newParticipation.setJoinedAt(LocalDateTime.now());
+            EventParticipant saved = eventParticipantRepository.save(newParticipation);
+            return toEventParticipantResponse(saved);
+        }
+    }
+    
     private EventParticipantResponse toEventParticipantResponse(EventParticipant ep) {
         return new EventParticipantResponse(
             ep.getId(),
