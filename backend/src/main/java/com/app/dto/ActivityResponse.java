@@ -37,4 +37,6 @@ public class ActivityResponse {
     private Integer totalReactions;
     private Integer commentCount;
     private String status;
+    private Boolean isBlockedForEditing;
+    private Long secondsUntilBlocking;
 }

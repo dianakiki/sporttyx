@@ -39,6 +39,8 @@ public class EventResponse {
     private Boolean teamBasedCompetition;
     private Boolean trackActivityDuration;
     private Boolean artifactsRequired;
+    private Boolean activityBlockingEnabled;
+    private Integer activityBlockingDays;
     private Set<EventAdminDto> eventAdmins;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -38,5 +38,7 @@ public class EventRequest {
     private Boolean teamBasedCompetition;
     private Boolean trackActivityDuration;
     private Boolean artifactsRequired;
+    private Boolean activityBlockingEnabled;
+    private Integer activityBlockingDays;
     private Set<Long> eventAdminIds;
 }

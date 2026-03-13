@@ -47,6 +47,8 @@ export const AddActivityForm: React.FC = () => {
     const [isTeamBased, setIsTeamBased] = useState(true);
     const [trackActivityDuration, setTrackActivityDuration] = useState(false);
     const [artifactsRequired, setArtifactsRequired] = useState(false);
+    const [activityBlockingEnabled, setActivityBlockingEnabled] = useState(false);
+    const [activityBlockingDays, setActivityBlockingDays] = useState<number | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -149,6 +151,26 @@ export const AddActivityForm: React.FC = () => {
             // Determine which event to use: from URL parameter or user's current event
             const targetEventId = eventIdFromUrl || null;
             
+            // If eventId is provided in URL, load event data FIRST to set trackActivityDuration immediately
+            if (targetEventId) {
+                try {
+                    const eventResponse = await fetch(`/api/events/${targetEventId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    });
+                    
+                    if (eventResponse.ok) {
+                        const eventData = await eventResponse.json();
+                        setIsTeamBased(eventData.teamBasedCompetition === true);
+                        setTrackActivityDuration(eventData.trackActivityDuration || false);
+                        setArtifactsRequired(eventData.artifactsRequired || false);
+                        setActivityBlockingEnabled(eventData.activityBlockingEnabled || false);
+                        setActivityBlockingDays(eventData.activityBlockingDays || null);
+                    }
+                } catch (err) {
+                    console.error('Error fetching event data:', err);
+                }
+            }
+            
             // Fetch user's team and event
             const userResponse = await fetch(`/api/participants/${userId}`, {
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -197,28 +219,41 @@ export const AddActivityForm: React.FC = () => {
                     setSelectedTeamId(userData.teamId.toString());
                 }
                 
-                // Fetch event info to check if it's team-based
+                // Fetch event info (if not already loaded) and activity types in parallel
                 if (eventIdToUse) {
-                    const eventResponse = await fetch(`/api/events/${eventIdToUse}`, {
-                        headers: { 'Authorization': `Bearer ${token}` },
-                    });
+                    const promises: Promise<any>[] = [];
                     
-                    if (eventResponse.ok) {
-                        const eventData = await eventResponse.json();
-                        setIsTeamBased(eventData.teamBasedCompetition === true);
-                        setTrackActivityDuration(eventData.trackActivityDuration || false);
-                        setArtifactsRequired(eventData.artifactsRequired || false);
+                    // Only fetch event if we haven't already loaded it
+                    if (!targetEventId) {
+                        promises.push(
+                            fetch(`/api/events/${eventIdToUse}`, {
+                                headers: { 'Authorization': `Bearer ${token}` },
+                            }).then(async (res) => {
+                                if (res.ok) {
+                                    const eventData = await res.json();
+                                    setIsTeamBased(eventData.teamBasedCompetition === true);
+                                    setTrackActivityDuration(eventData.trackActivityDuration || false);
+                                    setArtifactsRequired(eventData.artifactsRequired || false);
+                                    setActivityBlockingEnabled(eventData.activityBlockingEnabled || false);
+                                    setActivityBlockingDays(eventData.activityBlockingDays || null);
+                                }
+                            })
+                        );
                     }
                     
-                    // Fetch activity types for the event
-                    const typesResponse = await fetch(`/api/activity-types?eventId=${eventIdToUse}`, {
-                        headers: { 'Authorization': `Bearer ${token}` },
-                    });
+                    // Always fetch activity types
+                    promises.push(
+                        fetch(`/api/activity-types?eventId=${eventIdToUse}`, {
+                            headers: { 'Authorization': `Bearer ${token}` },
+                        }).then(async (res) => {
+                            if (res.ok) {
+                                const typesData = await res.json();
+                                setActivityTypes(typesData);
+                            }
+                        })
+                    );
                     
-                    if (typesResponse.ok) {
-                        const typesData = await typesResponse.json();
-                        setActivityTypes(typesData);
-                    }
+                    await Promise.all(promises);
                 } else {
                     // If no event, fetch all activity types (fallback)
                     const typesResponse = await fetch('/api/activity-types', {
@@ -548,7 +583,15 @@ export const AddActivityForm: React.FC = () => {
                             />
                             {energy && (
                                 <p className="text-xs text-slate-500 mt-1">
-                                    Баллы за эту активность: {energy}
+                                    {(() => {
+                                        const energyNum = Number(energy) || 0;
+                                        const durationNum = Number(durationMinutes) || 0;
+                                        let points = energyNum;
+                                        if (trackActivityDuration && durationNum > 0) {
+                                            points = Math.floor((energyNum * durationNum) / 60);
+                                        }
+                                        return `Баллы за эту активность: ${points}`;
+                                    })()}
                                 </p>
                             )}
                         </div>
@@ -574,11 +617,60 @@ export const AddActivityForm: React.FC = () => {
                                 value={reportDate || new Date().toISOString().split('T')[0]}
                                 onChange={(date) => setReportDate(date)}
                                 maxDate={new Date().toISOString().split('T')[0]}
+                                minDate={(() => {
+                                    if (!activityBlockingEnabled || !activityBlockingDays) {
+                                        // Если блокировка выключена, можно выбрать любую дату в текущем году, но не позднее текущей
+                                        const currentYear = new Date().getFullYear();
+                                        return `${currentYear}-01-01`;
+                                    }
+                                    // Если блокировка включена, ограничиваем выбор
+                                    const today = new Date();
+                                    const minDate = new Date(today);
+                                    minDate.setDate(today.getDate() - (activityBlockingDays - 1));
+                                    return minDate.toISOString().split('T')[0];
+                                })()}
                                 label="Отчетная дата"
                                 placeholder="Выберите дату активности"
+                                quickButtons={(() => {
+                                    if (!activityBlockingEnabled || !activityBlockingDays) {
+                                        return undefined;
+                                    }
+                                    const today = new Date();
+                                    const buttons: Array<{ label: string; date: string }> = [];
+                                    
+                                    // Сегодня
+                                    buttons.push({
+                                        label: 'За сегодня',
+                                        date: today.toISOString().split('T')[0]
+                                    });
+                                    
+                                    // Вчера
+                                    if (activityBlockingDays >= 1) {
+                                        const yesterday = new Date(today);
+                                        yesterday.setDate(today.getDate() - 1);
+                                        buttons.push({
+                                            label: 'За вчера',
+                                            date: yesterday.toISOString().split('T')[0]
+                                        });
+                                    }
+                                    
+                                    // Позавчера
+                                    if (activityBlockingDays >= 2) {
+                                        const dayBeforeYesterday = new Date(today);
+                                        dayBeforeYesterday.setDate(today.getDate() - 2);
+                                        buttons.push({
+                                            label: 'За позавчера',
+                                            date: dayBeforeYesterday.toISOString().split('T')[0]
+                                        });
+                                    }
+                                    
+                                    return buttons;
+                                })()}
                             />
                             <p className="text-xs text-slate-500 mt-2">
-                                Выберите дату, за которую вы добавляете активность. По умолчанию - сегодня.
+                                {activityBlockingEnabled && activityBlockingDays
+                                    ? `Выберите дату, за которую вы добавляете активность. Доступны только последние ${activityBlockingDays} дня.`
+                                    : 'Выберите дату, за которую вы добавляете активность. По умолчанию - сегодня.'}
                             </p>
                         </div>
 

@@ -102,6 +102,12 @@ public class Event {
 
     @Column(name = "artifacts_required", nullable = false)
     private Boolean artifactsRequired = false;
+
+    @Column(name = "activity_blocking_enabled", nullable = false)
+    private Boolean activityBlockingEnabled = false;
+
+    @Column(name = "activity_blocking_days")
+    private Integer activityBlockingDays;
     
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

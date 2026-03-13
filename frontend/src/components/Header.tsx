@@ -17,6 +17,7 @@ export const Header: React.FC = () => {
     const [isTeamBasedEvent, setIsTeamBasedEvent] = useState(false);
     const [activeEventId, setActiveEventId] = useState<number | null>(null);
     const [hasActiveTeamEvent, setHasActiveTeamEvent] = useState(false);
+    const [activeIndividualEventId, setActiveIndividualEventId] = useState<number | null>(null);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -86,6 +87,12 @@ export const Header: React.FC = () => {
                         event.teamBasedCompetition && event.status === 'ACTIVE'
                     );
                     setHasActiveTeamEvent(hasActiveTeamBasedEvent);
+
+                    // Find active individual (non-team-based) event the user joined
+                    const activeIndividual = events.find((event: any) => 
+                        !event.teamBasedCompetition && event.status === 'ACTIVE'
+                    );
+                    setActiveIndividualEventId(activeIndividual ? activeIndividual.id : null);
                 }
             } catch (err) {
                 console.error('Error fetching user team:', err);
@@ -191,6 +198,14 @@ export const Header: React.FC = () => {
         navigate('/login');
     };
 
+    const handleMyActivitiesClick = () => {
+        const userId = localStorage.getItem('userId');
+        if (!userId || !activeIndividualEventId) {
+            return;
+        }
+        navigate(`/event/${activeIndividualEventId}/my-activities/${userId}`);
+    };
+
     const handleMyTeamClick = () => {
         console.log('My Team clicked, userTeamId:', userTeamId);
         if (userTeamId) {
@@ -269,6 +284,16 @@ export const Header: React.FC = () => {
                             >
                                 <Users className="w-5 h-5" />
                                 <span className="hidden sm:inline">Моя команда</span>
+                            </button>
+                        )}
+
+                        {!hasActiveTeamEvent && activeIndividualEventId && hasJoinedEvent && (
+                            <button
+                                onClick={handleMyActivitiesClick}
+                                className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all"
+                            >
+                                <BarChart3 className="w-5 h-5" />
+                                <span className="hidden sm:inline">Мои активности</span>
                             </button>
                         )}
 

@@ -91,4 +91,6 @@ databaseChangeLog:
       file: db/changelog/changes/047-add-artifacts-required-to-events.yaml
   - include:
       file: db/changelog/changes/048-add-report-date-to-activities.yaml
+  - include:
+      file: db/changelog/changes/049-add-activity-blocking-to-events.yaml
 

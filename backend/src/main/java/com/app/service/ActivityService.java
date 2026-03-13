@@ -380,14 +380,44 @@ public class ActivityService {
         Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
         
-        // Проверка, что активность в статусе PENDING
-        if (activity.getStatus() != ActivityStatus.PENDING) {
-            throw new RuntimeException("Activity can only be edited when status is PENDING");
+        // Проверка роли пользователя - админы могут редактировать всегда
+        Participant participant = participantRepository.findById(participantId)
+                .orElseThrow(() -> new RuntimeException("Participant not found"));
+        boolean isAdmin = participant.getRole() == com.app.model.Role.ADMIN;
+        
+        // Если не админ, проверяем блокировку
+        if (!isAdmin) {
+            // Проверка, что активность в статусе PENDING
+            if (activity.getStatus() != ActivityStatus.PENDING) {
+                throw new RuntimeException("Activity can only be edited when status is PENDING");
+            }
+            
+            // Проверка блокировки по времени
+            Event event = null;
+            if (activity.getTeam() != null && activity.getTeam().getEvent() != null) {
+                event = activity.getTeam().getEvent();
+            } else if (activity.getActivityType() != null && activity.getActivityType().getEvent() != null) {
+                event = activity.getActivityType().getEvent();
+            }
+            
+            if (event != null && event.getActivityBlockingEnabled() != null && event.getActivityBlockingEnabled()) {
+                LocalDate activityDate = activity.getReportDate() != null ? activity.getReportDate() : activity.getCreatedAt().toLocalDate();
+                LocalDate currentDate = LocalDate.now();
+                Integer blockingDays = event.getActivityBlockingDays();
+                
+                if (blockingDays != null && blockingDays > 0) {
+                    LocalDate blockingThreshold = currentDate.minusDays(blockingDays);
+                    if (activityDate.isBefore(blockingThreshold) || activityDate.isEqual(blockingThreshold)) {
+                        throw new RuntimeException("Активность заблокирована для редактирования. Срок редактирования истек.");
+                    }
+                }
+            }
         }
         
         // Проверка прав на редактирование:
         // 1. Пользователь является создателем активности
         // 2. ИЛИ пользователь является капитаном команды, к которой принадлежит активность
+        // 3. ИЛИ пользователь является админом
         boolean isCreator = activity.getParticipant().getId().equals(participantId);
         boolean isCaptain = false;
         
@@ -400,7 +430,7 @@ public class ActivityService {
             }
         }
         
-        if (!isCreator && !isCaptain) {
+        if (!isCreator && !isCaptain && !isAdmin) {
             throw new RuntimeException("Only activity creator or team captain can edit the activity");
         }
         
@@ -662,6 +692,46 @@ public class ActivityService {
             finalPoints = 0;
         }
         
+        // Calculate blocking information
+        Boolean isBlockedForEditing = false;
+        Long secondsUntilBlocking = null;
+        
+        if (event != null && event.getActivityBlockingEnabled() != null && event.getActivityBlockingEnabled()) {
+            LocalDate activityDate = a.getReportDate() != null ? a.getReportDate() : a.getCreatedAt().toLocalDate();
+            LocalDate currentDate = LocalDate.now();
+            Integer blockingDays = event.getActivityBlockingDays();
+            
+            if (blockingDays != null && blockingDays > 0) {
+                // Calculate blocking threshold date (current date - blocking days)
+                LocalDate blockingThreshold = currentDate.minusDays(blockingDays);
+                
+                // Check if activity is already blocked
+                if (activityDate.isBefore(blockingThreshold) || activityDate.isEqual(blockingThreshold)) {
+                    isBlockedForEditing = true;
+                } else {
+                    // Calculate seconds until blocking
+                    // Blocking happens at 00:00 of the day when activityDate becomes <= blockingThreshold
+                    // So if activityDate is today, blocking happens tomorrow at 00:00
+                    // If activityDate is yesterday, blocking happens today at 00:00
+                    LocalDate blockingDate = activityDate.plusDays(blockingDays);
+                    LocalDateTime blockingDateTime = blockingDate.atStartOfDay();
+                    LocalDateTime now = LocalDateTime.now();
+                    
+                    if (blockingDateTime.isAfter(now)) {
+                        secondsUntilBlocking = java.time.Duration.between(now, blockingDateTime).getSeconds();
+                    } else {
+                        isBlockedForEditing = true;
+                    }
+                }
+            }
+        }
+        
+        // Also block if status is APPROVED (except for admins, but we check that on backend)
+        if (a.getStatus() == ActivityStatus.APPROVED) {
+            isBlockedForEditing = true;
+            secondsUntilBlocking = null;
+        }
+        
         ActivityResponse response = new ActivityResponse(
                 a.getId(),
                 a.getActivityType().getName(),
@@ -686,7 +756,9 @@ public class ActivityService {
                 userReaction,
                 totalReactions,
                 commentCount,
-                a.getStatus() != null ? a.getStatus().name() : null
+                a.getStatus() != null ? a.getStatus().name() : null,
+                isBlockedForEditing,
+                secondsUntilBlocking
         );
         
         return response;

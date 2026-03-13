@@ -111,6 +111,8 @@ export const AdminPanel: React.FC = () => {
         visibility: 'PUBLIC',
         requiresActivityApproval: false,
         artifactsRequired: false,
+        activityBlockingEnabled: false,
+        activityBlockingDays: 1,
         maxTeams: '',
         maxParticipants: '',
         pointsMultiplier: '1.0',
@@ -294,6 +296,7 @@ export const AdminPanel: React.FC = () => {
                 maxTeams: newEvent.maxTeams ? parseInt(newEvent.maxTeams) : null,
                 maxParticipants: newEvent.maxParticipants ? parseInt(newEvent.maxParticipants) : null,
                 pointsMultiplier: parseFloat(newEvent.pointsMultiplier),
+                activityBlockingDays: newEvent.activityBlockingEnabled ? newEvent.activityBlockingDays : null,
             };
             
             if (editingEventId) {
@@ -311,6 +314,8 @@ export const AdminPanel: React.FC = () => {
                 visibility: 'PUBLIC',
                 requiresActivityApproval: false,
                 artifactsRequired: false,
+                activityBlockingEnabled: false,
+                activityBlockingDays: 1,
                 maxTeams: '',
                 maxParticipants: '',
                 pointsMultiplier: '1.0',
@@ -504,6 +509,8 @@ export const AdminPanel: React.FC = () => {
                 visibility: fullEvent.visibility || 'PUBLIC',
                 requiresActivityApproval: fullEvent.requiresActivityApproval || false,
                 artifactsRequired: fullEvent.artifactsRequired || false,
+                activityBlockingEnabled: fullEvent.activityBlockingEnabled || false,
+                activityBlockingDays: fullEvent.activityBlockingDays || 1,
                 maxTeams: fullEvent.maxTeams?.toString() || '',
                 maxParticipants: fullEvent.maxParticipants?.toString() || '',
                 pointsMultiplier: fullEvent.pointsMultiplier?.toString() || '1.0',
@@ -528,6 +535,8 @@ export const AdminPanel: React.FC = () => {
                 visibility: 'PUBLIC',
                 requiresActivityApproval: false,
                 artifactsRequired: false,
+                activityBlockingEnabled: false,
+                activityBlockingDays: 1,
                 maxTeams: '',
                 maxParticipants: '',
                 pointsMultiplier: '1.0',
@@ -1192,6 +1201,59 @@ export const AdminPanel: React.FC = () => {
                                         <span className="text-xs text-slate-500">(фото обязательно для подтверждения активности)</span>
                                     </label>
                                 </div>
+
+                                <div>
+                                    <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-slate-200 rounded-lg hover:border-red-300 transition-all">
+                                        <input
+                                            type="checkbox"
+                                            checked={newEvent.activityBlockingEnabled}
+                                            onChange={(e) => setNewEvent({ ...newEvent, activityBlockingEnabled: e.target.checked, activityBlockingDays: e.target.checked ? newEvent.activityBlockingDays : 1 })}
+                                            className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
+                                        />
+                                        <span className="text-sm font-semibold text-slate-700">Блокирование активностей</span>
+                                        <span className="text-xs text-slate-500">(ограничение добавления активностей по дате)</span>
+                                    </label>
+                                </div>
+
+                                {newEvent.activityBlockingEnabled && (
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                            Блокирование активности через
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <label className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                                newEvent.activityBlockingDays === 1
+                                                    ? 'border-red-500 bg-red-50'
+                                                    : 'border-slate-200 hover:border-red-300'
+                                            }`}>
+                                                <input
+                                                    type="radio"
+                                                    name="activityBlockingDays"
+                                                    value="1"
+                                                    checked={newEvent.activityBlockingDays === 1}
+                                                    onChange={(e) => setNewEvent({ ...newEvent, activityBlockingDays: 1 })}
+                                                    className="w-4 h-4 text-red-600"
+                                                />
+                                                <span className="text-sm font-semibold text-slate-700">Текущая дата + 1 день</span>
+                                            </label>
+                                            <label className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                                newEvent.activityBlockingDays === 2
+                                                    ? 'border-red-500 bg-red-50'
+                                                    : 'border-slate-200 hover:border-red-300'
+                                            }`}>
+                                                <input
+                                                    type="radio"
+                                                    name="activityBlockingDays"
+                                                    value="2"
+                                                    checked={newEvent.activityBlockingDays === 2}
+                                                    onChange={(e) => setNewEvent({ ...newEvent, activityBlockingDays: 2 })}
+                                                    className="w-4 h-4 text-red-600"
+                                                />
+                                                <span className="text-sm font-semibold text-slate-700">Текущая дата + 2 дня</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="flex gap-4 pt-4">
                                     <button

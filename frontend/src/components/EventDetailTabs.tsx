@@ -20,6 +20,8 @@ interface Event {
     status: string;
     requiresActivityApproval: boolean;
     artifactsRequired?: boolean;
+    activityBlockingEnabled?: boolean;
+    activityBlockingDays?: number;
     teamBasedCompetition: boolean;
     trackActivityDuration?: boolean;
     dashboardTypes?: string[];
@@ -937,6 +939,59 @@ export const EventDetailTabs: React.FC = () => {
                                     </label>
                                 </div>
                                 <div>
+                                    <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-slate-200 rounded-lg hover:border-red-300 transition-all">
+                                        <input
+                                            type="checkbox"
+                                            checked={editForm.activityBlockingEnabled || false}
+                                            onChange={(e) => setEditForm({ ...editForm, activityBlockingEnabled: e.target.checked, activityBlockingDays: e.target.checked ? (editForm.activityBlockingDays || 1) : 1 })}
+                                            className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
+                                        />
+                                        <span className="text-sm font-semibold text-slate-700">Блокирование активностей</span>
+                                        <span className="text-xs text-slate-500">(ограничение добавления активностей по дате)</span>
+                                    </label>
+                                </div>
+
+                                {editForm.activityBlockingEnabled && (
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                            Блокирование активности через
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <label className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                                editForm.activityBlockingDays === 1
+                                                    ? 'border-red-500 bg-red-50'
+                                                    : 'border-slate-200 hover:border-red-300'
+                                            }`}>
+                                                <input
+                                                    type="radio"
+                                                    name="activityBlockingDays"
+                                                    value="1"
+                                                    checked={editForm.activityBlockingDays === 1}
+                                                    onChange={(e) => setEditForm({ ...editForm, activityBlockingDays: 1 })}
+                                                    className="w-4 h-4 text-red-600"
+                                                />
+                                                <span className="text-sm font-semibold text-slate-700">Текущая дата + 1 день</span>
+                                            </label>
+                                            <label className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                                editForm.activityBlockingDays === 2
+                                                    ? 'border-red-500 bg-red-50'
+                                                    : 'border-slate-200 hover:border-red-300'
+                                            }`}>
+                                                <input
+                                                    type="radio"
+                                                    name="activityBlockingDays"
+                                                    value="2"
+                                                    checked={editForm.activityBlockingDays === 2}
+                                                    onChange={(e) => setEditForm({ ...editForm, activityBlockingDays: 2 })}
+                                                    className="w-4 h-4 text-red-600"
+                                                />
+                                                <span className="text-sm font-semibold text-slate-700">Текущая дата + 2 дня</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div>
                                     <label className="block text-sm font-semibold text-slate-700 mb-2">Типы дашбордов</label>
                                     <div className="grid grid-cols-2 gap-2">
                                         {['RANKING', 'TRACKER', 'FEED', 'SIMPLE_LIST'].map(type => (
@@ -1111,6 +1166,18 @@ export const EventDetailTabs: React.FC = () => {
                                     <div className="text-sm font-semibold text-slate-700 mb-1">Необходимость артефактов</div>
                                     <div className="text-lg text-slate-900">
                                         {event.artifactsRequired ? '✅ Обязательно' : '❌ Не обязательно'}
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-xl">
+                                    <div className="text-sm font-semibold text-slate-700 mb-1">Блокирование активностей</div>
+                                    <div className="text-lg text-slate-900">
+                                        {event.activityBlockingEnabled ? (
+                                            <span>
+                                                ✅ Включено ({event.activityBlockingDays === 1 ? 'через 1 день' : 'через 2 дня'})
+                                            </span>
+                                        ) : (
+                                            <span>❌ Выключено</span>
+                                        )}
                                     </div>
                                 </div>
                                 {event.dashboardTypes && event.dashboardTypes.length > 0 && (

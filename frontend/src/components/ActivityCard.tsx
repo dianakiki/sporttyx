@@ -37,6 +37,8 @@ interface ActivityCardProps {
         totalReactions?: number;
         commentCount?: number;
         status?: string;
+        isBlockedForEditing?: boolean;
+        secondsUntilBlocking?: number | null;
     };
     onReact?: (activityId: number, reactionType: string) => void;
     showSocialFeatures?: boolean;
@@ -54,6 +56,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
     const [modalPhotoIndex, setModalPhotoIndex] = useState(0);
     const [comments, setComments] = useState<Comment[]>([]);
     const [loadingComments, setLoadingComments] = useState(false);
+    const [timeUntilBlocking, setTimeUntilBlocking] = useState<string>('');
 
     const photos = activity.photoUrls && activity.photoUrls.length > 0 
         ? activity.photoUrls 
@@ -66,6 +69,33 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             fetchLatestComments();
         }
     }, [activity.id, activity.commentCount]);
+
+    useEffect(() => {
+        if (activity.secondsUntilBlocking != null && activity.secondsUntilBlocking > 0) {
+            const startTime = Date.now();
+            const initialSeconds = activity.secondsUntilBlocking;
+            
+            const updateTimer = () => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const remainingSeconds = Math.max(0, initialSeconds - elapsed);
+                
+                if (remainingSeconds > 0) {
+                    const hours = Math.floor(remainingSeconds / 3600);
+                    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+                    const secs = remainingSeconds % 60;
+                    setTimeUntilBlocking(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`);
+                } else {
+                    setTimeUntilBlocking('00:00:00');
+                }
+            };
+            
+            updateTimer();
+            const interval = setInterval(updateTimer, 1000);
+            return () => clearInterval(interval);
+        } else {
+            setTimeUntilBlocking('');
+        }
+    }, [activity.secondsUntilBlocking]);
 
     const fetchLatestComments = async () => {
         setLoadingComments(true);
@@ -138,6 +168,11 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             {/* Post Header */}
             <div className="p-4 flex items-center justify-between border-b border-slate-100">
                 <div className="flex items-center gap-3 flex-1">
+                    {timeUntilBlocking && activity.status === 'PENDING' && !activity.isBlockedForEditing && (
+                        <div className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-xs font-semibold border border-orange-300">
+                            Время до блокировки: {timeUntilBlocking}
+                        </div>
+                    )}
                     {activity.teamBasedCompetition && activity.teamAvatarUrl ? (
                         <img
                             src={activity.teamAvatarUrl}
@@ -201,7 +236,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    {activity.status === 'PENDING' && onEdit && (
+                    {activity.status === 'PENDING' && !activity.isBlockedForEditing && onEdit && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();

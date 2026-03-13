@@ -189,6 +189,12 @@ public class EventService {
         if (request.getArtifactsRequired() != null) {
             event.setArtifactsRequired(request.getArtifactsRequired());
         }
+        if (request.getActivityBlockingEnabled() != null) {
+            event.setActivityBlockingEnabled(request.getActivityBlockingEnabled());
+        }
+        if (request.getActivityBlockingDays() != null) {
+            event.setActivityBlockingDays(request.getActivityBlockingDays());
+        }
         
         if (request.getEventAdminIds() != null) {
             Set<Participant> admins = new HashSet<>();
@@ -246,6 +252,8 @@ public class EventService {
                 event.getTeamBasedCompetition(),
                 event.getTrackActivityDuration(),
                 event.getArtifactsRequired(),
+                event.getActivityBlockingEnabled(),
+                event.getActivityBlockingDays(),
                 adminDtos,
                 event.getCreatedAt(),
                 event.getUpdatedAt()
