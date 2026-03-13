@@ -19,6 +19,7 @@ interface Event {
     endDate: string;
     status: string;
     requiresActivityApproval: boolean;
+    artifactsRequired?: boolean;
     teamBasedCompetition: boolean;
     trackActivityDuration?: boolean;
     dashboardTypes?: string[];
@@ -912,6 +913,18 @@ export const EventDetailTabs: React.FC = () => {
                                     </label>
                                 </div>
                                 <div>
+                                    <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-slate-200 rounded-lg hover:border-blue-300 transition-all">
+                                        <input
+                                            type="checkbox"
+                                            checked={editForm.artifactsRequired || false}
+                                            onChange={(e) => setEditForm({ ...editForm, artifactsRequired: e.target.checked })}
+                                            className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm font-semibold text-slate-700">Необходимость приложения артефактов</span>
+                                        <span className="text-xs text-slate-500">(фото обязательно для подтверждения активности)</span>
+                                    </label>
+                                </div>
+                                <div>
                                     <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-slate-200 rounded-lg hover:border-green-300 transition-all">
                                         <input
                                             type="checkbox"
@@ -1092,6 +1105,12 @@ export const EventDetailTabs: React.FC = () => {
                                     <div className="text-sm font-semibold text-slate-700 mb-1">Время активности</div>
                                     <div className="text-lg text-slate-900">
                                         {event.trackActivityDuration ? '✅ Включено' : '❌ Выключено'}
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-xl">
+                                    <div className="text-sm font-semibold text-slate-700 mb-1">Необходимость артефактов</div>
+                                    <div className="text-lg text-slate-900">
+                                        {event.artifactsRequired ? '✅ Обязательно' : '❌ Не обязательно'}
                                     </div>
                                 </div>
                                 {event.dashboardTypes && event.dashboardTypes.length > 0 && (

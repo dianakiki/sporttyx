@@ -110,6 +110,7 @@ export const AdminPanel: React.FC = () => {
         status: 'DRAFT',
         visibility: 'PUBLIC',
         requiresActivityApproval: false,
+        artifactsRequired: false,
         maxTeams: '',
         maxParticipants: '',
         pointsMultiplier: '1.0',
@@ -309,6 +310,7 @@ export const AdminPanel: React.FC = () => {
                 status: 'DRAFT',
                 visibility: 'PUBLIC',
                 requiresActivityApproval: false,
+                artifactsRequired: false,
                 maxTeams: '',
                 maxParticipants: '',
                 pointsMultiplier: '1.0',
@@ -501,6 +503,7 @@ export const AdminPanel: React.FC = () => {
                 status: fullEvent.status,
                 visibility: fullEvent.visibility || 'PUBLIC',
                 requiresActivityApproval: fullEvent.requiresActivityApproval || false,
+                artifactsRequired: fullEvent.artifactsRequired || false,
                 maxTeams: fullEvent.maxTeams?.toString() || '',
                 maxParticipants: fullEvent.maxParticipants?.toString() || '',
                 pointsMultiplier: fullEvent.pointsMultiplier?.toString() || '1.0',
@@ -524,6 +527,7 @@ export const AdminPanel: React.FC = () => {
                 status: event.status,
                 visibility: 'PUBLIC',
                 requiresActivityApproval: false,
+                artifactsRequired: false,
                 maxTeams: '',
                 maxParticipants: '',
                 pointsMultiplier: '1.0',
@@ -1173,6 +1177,19 @@ export const AdminPanel: React.FC = () => {
                                         />
                                         <span className="text-sm font-semibold text-slate-700">Модерация активностей</span>
                                         <span className="text-xs text-slate-500">(активности требуют одобрения модератором)</span>
+                                    </label>
+                                </div>
+
+                                <div>
+                                    <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-slate-200 rounded-lg hover:border-blue-300 transition-all">
+                                        <input
+                                            type="checkbox"
+                                            checked={newEvent.artifactsRequired}
+                                            onChange={(e) => setNewEvent({ ...newEvent, artifactsRequired: e.target.checked })}
+                                            className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm font-semibold text-slate-700">Необходимость приложения артефактов</span>
+                                        <span className="text-xs text-slate-500">(фото обязательно для подтверждения активности)</span>
                                     </label>
                                 </div>
 

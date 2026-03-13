@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -233,7 +234,7 @@ public class ActivityService {
      * @throws RuntimeException если превышен лимит фото, команда/участник не найдены
      */
     public CreateActivityResponse createActivity(Long teamId, Long participantId, String type, 
-                                                  Integer energy, String description, Integer durationMinutes, List<MultipartFile> photos, List<Long> participantIds) {
+                                                  Integer energy, String description, Integer durationMinutes, LocalDate reportDate, List<MultipartFile> photos, List<Long> participantIds) {
         // Validate photo count
         if (photos != null && photos.size() > 10) {
             throw new RuntimeException("Maximum 10 photos allowed per activity");
@@ -269,6 +270,12 @@ public class ActivityService {
             event = team.getEvent();
         }
         
+        // Validate duration against activity type limits if event tracks duration
+        validateDurationAgainstLimits(event, activityType, durationMinutes);
+        
+        // Validate photo requirement based on event settings
+        validateArtifactsRequirement(event, photos);
+
         Activity activity = new Activity();
         activity.setTeam(team); // Can be null for individual events
         activity.setParticipant(participant);
@@ -276,6 +283,7 @@ public class ActivityService {
         activity.setEnergy(energy);
         activity.setDescription(description);
         activity.setDurationMinutes(durationMinutes);
+        activity.setReportDate(reportDate); // Can be null, defaults to null if not provided
         
         // Get event from activityType if team is null
         if (event == null) {
@@ -367,7 +375,7 @@ public class ActivityService {
      */
     @Transactional
     public CreateActivityResponse updateActivity(Long activityId, Long participantId, String type, 
-                                                  Integer energy, String description, Integer durationMinutes, 
+                                                  Integer energy, String description, Integer durationMinutes, LocalDate reportDate,
                                                   List<MultipartFile> photos, List<Long> participantIds) {
         Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
@@ -412,11 +420,15 @@ public class ActivityService {
             event = activityType.getEvent();
         }
         
+        // Validate duration against activity type limits if event tracks duration
+        validateDurationAgainstLimits(event, activityType, durationMinutes);
+
         // Update activity fields
         activity.setActivityType(activityType);
         activity.setEnergy(energy);
         activity.setDescription(description);
         activity.setDurationMinutes(durationMinutes);
+        activity.setReportDate(reportDate); // Can be null
         
         // Calculate points based on event settings
         if (event != null && event.getTrackActivityDuration() != null && event.getTrackActivityDuration() 
@@ -487,6 +499,58 @@ public class ActivityService {
                 activity.getEnergy(),
                 activity.getCreatedAt()
         );
+    }
+
+    /**
+     * Проверка необходимости приложить артефакты (фото) для мероприятия.
+     *
+     * Если у события установлен флаг artifactsRequired = true, то при создании
+     * активности хотя бы одно фото обязательно.
+     */
+    private void validateArtifactsRequirement(Event event, List<MultipartFile> photos) {
+        if (event == null || event.getArtifactsRequired() == null || !event.getArtifactsRequired()) {
+            return;
+        }
+
+        boolean hasPhotos = photos != null && photos.stream()
+                .anyMatch(p -> p != null && !p.isEmpty());
+
+        if (!hasPhotos) {
+            throw new RuntimeException("Необходимо приложить артефакты, подтверждающие вашу спортивную активность");
+        }
+    }
+
+    /**
+     * Проверка, укладывается ли указанная длительность в ограничения типа активности.
+     *
+     * Правила:
+     * - Проверка выполняется только если event.trackActivityDuration == true и durationMinutes != null.
+     * - Если для типа активности timeLimitRequired == true:
+     *   - Если minDurationMinutes != null и duration < min -> ошибка.
+     *   - Если maxDurationMinutes != null и duration > max -> ошибка.
+     * - Если min/max == null, считаем, что нижней/верхней границы нет.
+     */
+    private void validateDurationAgainstLimits(Event event, ActivityType activityType, Integer durationMinutes) {
+        if (event == null || event.getTrackActivityDuration() == null || !event.getTrackActivityDuration()) {
+            return; // проверка только для мероприятий с включённым учётом времени
+        }
+        if (durationMinutes == null) {
+            return; // без времени нечего проверять
+        }
+
+        if (activityType == null || !activityType.isTimeLimitRequired()) {
+            return; // для типа без ограничения по времени ничего не проверяем
+        }
+
+        Integer min = activityType.getMinDurationMinutes();
+        Integer max = activityType.getMaxDurationMinutes();
+
+        if (min != null && durationMinutes < min) {
+            throw new RuntimeException("Время активности меньше минимально допустимого для данного типа (минимальное время равно " + min + " мин).");
+        }
+        if (max != null && durationMinutes > max) {
+            throw new RuntimeException("Время активности больше максимально допустимого для данного типа (максимальное время равно " + max + " мин).");
+        }
     }
     
     /**
@@ -611,6 +675,7 @@ public class ActivityService {
                 a.getPhotoUrl(),
                 photoUrls,
                 a.getCreatedAt(),
+                a.getReportDate(),
                 a.getTeam() != null ? a.getTeam().getId() : null,
                 a.getTeam() != null ? a.getTeam().getName() : null,
                 a.getTeam() != null ? a.getTeam().getImageUrl() : null,

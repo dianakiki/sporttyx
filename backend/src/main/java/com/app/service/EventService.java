@@ -186,6 +186,9 @@ public class EventService {
         if (request.getTrackActivityDuration() != null) {
             event.setTrackActivityDuration(request.getTrackActivityDuration());
         }
+        if (request.getArtifactsRequired() != null) {
+            event.setArtifactsRequired(request.getArtifactsRequired());
+        }
         
         if (request.getEventAdminIds() != null) {
             Set<Participant> admins = new HashSet<>();
@@ -242,6 +245,7 @@ public class EventService {
                 dashboardOrder,
                 event.getTeamBasedCompetition(),
                 event.getTrackActivityDuration(),
+                event.getArtifactsRequired(),
                 adminDtos,
                 event.getCreatedAt(),
                 event.getUpdatedAt()

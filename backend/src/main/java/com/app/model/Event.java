@@ -99,6 +99,9 @@ public class Event {
     
     @Column(name = "track_activity_duration", nullable = false)
     private Boolean trackActivityDuration = false;
+
+    @Column(name = "artifacts_required", nullable = false)
+    private Boolean artifactsRequired = false;
     
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

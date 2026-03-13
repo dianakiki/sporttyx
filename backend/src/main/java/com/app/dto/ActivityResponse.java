@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ public class ActivityResponse {
     private String photoUrl;
     private List<String> photoUrls;
     private LocalDateTime createdAt;
+    private LocalDate reportDate;
     private Long teamId;
     private String teamName;
     private String teamAvatarUrl;

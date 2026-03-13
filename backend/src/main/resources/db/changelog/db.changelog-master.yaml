@@ -87,4 +87,8 @@ databaseChangeLog:
       file: db/changelog/changes/045-add-time-limits-to-activity-types.yaml
   - include:
       file: db/changelog/changes/046-update-activity-types-unique-constraint.yaml
+  - include:
+      file: db/changelog/changes/047-add-artifacts-required-to-events.yaml
+  - include:
+      file: db/changelog/changes/048-add-report-date-to-activities.yaml
 

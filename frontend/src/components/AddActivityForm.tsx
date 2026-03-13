@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
+import { DatePicker } from './ui/DatePicker';
 import { Activity, Upload, Image as ImageIcon } from 'lucide-react';
 
 interface Team {
@@ -38,13 +39,23 @@ export const AddActivityForm: React.FC = () => {
     const [energy, setEnergy] = useState('');
     const [description, setDescription] = useState('');
     const [durationMinutes, setDurationMinutes] = useState('');
+    const [reportDate, setReportDate] = useState('');
     const [photos, setPhotos] = useState<File[]>([]);
     const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [isTeamBased, setIsTeamBased] = useState(true);
     const [trackActivityDuration, setTrackActivityDuration] = useState(false);
+    const [artifactsRequired, setArtifactsRequired] = useState(false);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        // Initialize reportDate to today if not set
+        if (!reportDate) {
+            const today = new Date().toISOString().split('T')[0];
+            setReportDate(today);
+        }
+    }, []);
 
     useEffect(() => {
         fetchUserTeamAndActivityTypes();
@@ -70,6 +81,13 @@ export const AddActivityForm: React.FC = () => {
                 setEnergy(activity.energy?.toString() || '');
                 setDescription(activity.description || '');
                 setDurationMinutes(activity.durationMinutes?.toString() || '');
+                if (activity.reportDate) {
+                    setReportDate(activity.reportDate);
+                } else {
+                    // Default to today's date if not set
+                    const today = new Date().toISOString().split('T')[0];
+                    setReportDate(today);
+                }
                 
                 // Set activity type
                 const activityType = activityTypes.find(at => at.name === activity.type);
@@ -189,6 +207,7 @@ export const AddActivityForm: React.FC = () => {
                         const eventData = await eventResponse.json();
                         setIsTeamBased(eventData.teamBasedCompetition === true);
                         setTrackActivityDuration(eventData.trackActivityDuration || false);
+                        setArtifactsRequired(eventData.artifactsRequired || false);
                     }
                     
                     // Fetch activity types for the event
@@ -388,6 +407,9 @@ export const AddActivityForm: React.FC = () => {
             if (trackActivityDuration && durationMinutes) {
                 formData.append('durationMinutes', durationMinutes);
             }
+            if (reportDate) {
+                formData.append('reportDate', reportDate);
+            }
             
             // Create new File objects to avoid ERR_UPLOAD_FILE_CHANGED
             photos.forEach((photo) => {
@@ -548,6 +570,19 @@ export const AddActivityForm: React.FC = () => {
                         )}
 
                         <div className="mb-6">
+                            <DatePicker
+                                value={reportDate || new Date().toISOString().split('T')[0]}
+                                onChange={(date) => setReportDate(date)}
+                                maxDate={new Date().toISOString().split('T')[0]}
+                                label="Отчетная дата"
+                                placeholder="Выберите дату активности"
+                            />
+                            <p className="text-xs text-slate-500 mt-2">
+                                Выберите дату, за которую вы добавляете активность. По умолчанию - сегодня.
+                            </p>
+                        </div>
+
+                        <div className="mb-6">
                             <label className="block text-sm font-semibold text-slate-700 mb-2">
                                 Описание активности (необязательно)
                             </label>
@@ -562,7 +597,7 @@ export const AddActivityForm: React.FC = () => {
 
                         <div className="mb-6">
                             <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Фото (необязательно, можно несколько)
+                                {artifactsRequired ? 'Фото (обязательно, можно несколько)' : 'Фото (необязательно, можно несколько)'}
                             </label>
                             
                             {/* Photo Previews Grid */}
