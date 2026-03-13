@@ -137,7 +137,7 @@ public class ParticipantService {
                             .filter(activity -> activity.getTeam() != null 
                                     && activity.getTeam().getEvent() != null 
                                     && activity.getTeam().getEvent().getId().equals(eventId))
-                            .mapToInt(activity -> activity.getEnergy() != null ? activity.getEnergy() : 0)
+                            .mapToInt(activity -> activity.getPoints() != null ? activity.getPoints().intValue() : (activity.getEnergy() != null ? activity.getEnergy() : 0))
                             .sum();
                     
                     return new ParticipantRankingResponse(

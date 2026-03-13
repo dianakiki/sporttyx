@@ -830,6 +830,7 @@ export const AdminPanel: React.FC = () => {
                                         <div className="text-sm font-semibold text-slate-700 mb-1">Статус</div>
                                         <div className="text-lg text-slate-900">
                                             {selectedEvent.status === 'DRAFT' && '📝 Черновик'}
+                                            {selectedEvent.status === 'SOON' && '⏰ Скоро'}
                                             {selectedEvent.status === 'ACTIVE' && '✅ Активное'}
                                             {selectedEvent.status === 'COMPLETED' && '🏁 Завершено'}
                                             {selectedEvent.status === 'ARCHIVED' && '📦 Архивировано'}
@@ -1075,6 +1076,21 @@ export const AdminPanel: React.FC = () => {
                                         className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none"
                                         rows={3}
                                     />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Статус мероприятия</label>
+                                    <select
+                                        value={newEvent.status}
+                                        onChange={(e) => setNewEvent({ ...newEvent, status: e.target.value })}
+                                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none"
+                                    >
+                                        <option value="DRAFT">Черновик</option>
+                                        <option value="SOON">Скоро</option>
+                                        <option value="ACTIVE">Активное</option>
+                                        <option value="COMPLETED">Завершено</option>
+                                        <option value="ARCHIVED">Архивировано</option>
+                                    </select>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">

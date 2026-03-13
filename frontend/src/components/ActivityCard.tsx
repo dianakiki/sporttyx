@@ -71,7 +71,14 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
     }, [activity.id, activity.commentCount]);
 
     useEffect(() => {
-        if (activity.secondsUntilBlocking != null && activity.secondsUntilBlocking > 0) {
+        // Показываем таймер только если:
+        // 1. secondsUntilBlocking передан и больше 0
+        // 2. Статус активности PENDING
+        // 3. Активность не заблокирована для редактирования
+        if (activity.secondsUntilBlocking != null && 
+            activity.secondsUntilBlocking > 0 && 
+            activity.status === 'PENDING' && 
+            activity.isBlockedForEditing !== true) {
             const startTime = Date.now();
             const initialSeconds = activity.secondsUntilBlocking;
             
@@ -95,7 +102,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         } else {
             setTimeUntilBlocking('');
         }
-    }, [activity.secondsUntilBlocking]);
+    }, [activity.secondsUntilBlocking, activity.status, activity.isBlockedForEditing]);
 
     const fetchLatestComments = async () => {
         setLoadingComments(true);
@@ -168,7 +175,12 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             {/* Post Header */}
             <div className="p-4 flex items-center justify-between border-b border-slate-100">
                 <div className="flex items-center gap-3 flex-1">
-                    {timeUntilBlocking && activity.status === 'PENDING' && !activity.isBlockedForEditing && (
+                    {activity.isBlockedForEditing === true && (
+                        <div className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-xs font-semibold border border-red-300">
+                            Активность заблокирована
+                        </div>
+                    )}
+                    {timeUntilBlocking && activity.status === 'PENDING' && activity.isBlockedForEditing !== true && (
                         <div className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-xs font-semibold border border-orange-300">
                             Время до блокировки: {timeUntilBlocking}
                         </div>
@@ -236,7 +248,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    {activity.status === 'PENDING' && !activity.isBlockedForEditing && onEdit && (
+                    {activity.status === 'PENDING' && activity.isBlockedForEditing !== true && onEdit && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();

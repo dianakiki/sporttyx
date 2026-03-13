@@ -156,6 +156,13 @@ export const EventCard: React.FC = () => {
                     const dateB = new Date(b.createdAt).getTime();
                     return dateB - dateA;
                 });
+                // Debug: log activity data to check blocking fields
+                console.log('User activities loaded:', sortedActivities.map((a: any) => ({
+                    id: a.id,
+                    status: a.status,
+                    isBlockedForEditing: a.isBlockedForEditing,
+                    secondsUntilBlocking: a.secondsUntilBlocking
+                })));
                 setUserActivities(sortedActivities);
             }
         } catch (error) {
@@ -396,7 +403,7 @@ export const EventCard: React.FC = () => {
                                     key={activity.id}
                                     activity={activity}
                                     showSocialFeatures={true}
-                                    onEdit={activity.status === 'PENDING' ? ((activityId) => {
+                                    onEdit={activity.status === 'PENDING' && activity.isBlockedForEditing !== true ? ((activityId) => {
                                         const url = activeEventId 
                                             ? `/add-activity?eventId=${activeEventId}&edit=${activityId}`
                                             : `/add-activity?edit=${activityId}`;

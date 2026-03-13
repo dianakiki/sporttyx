@@ -18,6 +18,7 @@ export const Header: React.FC = () => {
     const [activeEventId, setActiveEventId] = useState<number | null>(null);
     const [hasActiveTeamEvent, setHasActiveTeamEvent] = useState(false);
     const [activeIndividualEventId, setActiveIndividualEventId] = useState<number | null>(null);
+    const [isParticipantInActiveEvent, setIsParticipantInActiveEvent] = useState(false);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -110,35 +111,54 @@ export const Header: React.FC = () => {
     const fetchActiveEvent = async () => {
         try {
             const token = localStorage.getItem('token');
-            if (!token) return;
+            const userId = localStorage.getItem('userId');
+            if (!token || !userId) return;
 
             // Сначала пытаемся получить отображаемое мероприятие
             const displayedResponse = await fetch('/api/events/displayed', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             
+            let activeEvent = null;
             if (displayedResponse.ok && displayedResponse.status !== 204) {
-                const displayedEvent = await displayedResponse.json();
-                if (displayedEvent && displayedEvent.id) {
-                    setActiveEventId(displayedEvent.id);
-                    return;
+                activeEvent = await displayedResponse.json();
+            } else {
+                // Если нет отображаемого, получаем активные мероприятия
+                const activeResponse = await fetch('/api/events/active', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (activeResponse.ok) {
+                    const activeEvents = await activeResponse.json();
+                    // Берем первое активное мероприятие
+                    if (activeEvents && activeEvents.length > 0) {
+                        activeEvent = activeEvents[0];
+                    }
                 }
             }
             
-            // Если нет отображаемого, получаем активные мероприятия
-            const activeResponse = await fetch('/api/events/active', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (activeResponse.ok) {
-                const activeEvents = await activeResponse.json();
-                // Берем первое активное мероприятие
-                if (activeEvents && activeEvents.length > 0 && activeEvents[0].id) {
-                    setActiveEventId(activeEvents[0].id);
+            if (activeEvent && activeEvent.id) {
+                setActiveEventId(activeEvent.id);
+                
+                // Проверяем, является ли пользователь участником этого мероприятия
+                const isParticipantResponse = await fetch(`/api/events/${activeEvent.id}/is-participant`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (isParticipantResponse.ok) {
+                    const isParticipant = await isParticipantResponse.json();
+                    setIsParticipantInActiveEvent(isParticipant);
+                } else {
+                    setIsParticipantInActiveEvent(false);
                 }
+            } else {
+                setActiveEventId(null);
+                setIsParticipantInActiveEvent(false);
             }
         } catch (err) {
             console.error('Error fetching active event:', err);
+            setActiveEventId(null);
+            setIsParticipantInActiveEvent(false);
         }
     };
 
@@ -242,11 +262,18 @@ export const Header: React.FC = () => {
 
                         {hasJoinedEvent && (
                             <button
-                                onClick={() => {
-                                    const url = activeEventId 
-                                        ? `/add-activity?eventId=${activeEventId}`
-                                        : '/add-activity';
-                                    navigate(url);
+                                onClick={async () => {
+                                    if (!activeEventId) {
+                                        alert('Нет активных мероприятий');
+                                        return;
+                                    }
+                                    
+                                    if (!isParticipantInActiveEvent) {
+                                        alert('Вы не являетесь участником активного мероприятия');
+                                        return;
+                                    }
+                                    
+                                    navigate(`/add-activity?eventId=${activeEventId}`);
                                 }}
                                 className="flex items-center gap-2 px-4 py-2.5 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl font-semibold transition-all"
                             >

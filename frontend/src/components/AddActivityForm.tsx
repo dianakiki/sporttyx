@@ -20,6 +20,10 @@ interface ActivityType {
     name: string;
     description?: string;
     defaultEnergy?: number;
+    event?: {
+        id: number;
+        name: string;
+    };
 }
 
 export const AddActivityForm: React.FC = () => {
@@ -49,6 +53,7 @@ export const AddActivityForm: React.FC = () => {
     const [artifactsRequired, setArtifactsRequired] = useState(false);
     const [activityBlockingEnabled, setActivityBlockingEnabled] = useState(false);
     const [activityBlockingDays, setActivityBlockingDays] = useState<number | null>(null);
+    const [userRole, setUserRole] = useState<string | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -139,17 +144,92 @@ export const AddActivityForm: React.FC = () => {
             const activityType = activityTypes.find(at => at.id.toString() === selectedActivityTypeId);
             if (activityType?.defaultEnergy) {
                 setEnergy(activityType.defaultEnergy.toString());
+            } else {
+                // Если нет defaultEnergy, очищаем поле (только для админов)
+                if (userRole === 'ADMIN') {
+                    setEnergy('');
+                }
             }
         }
-    }, [selectedActivityTypeId, activityTypes]);
+    }, [selectedActivityTypeId, activityTypes, userRole]);
 
     const fetchUserTeamAndActivityTypes = async () => {
         try {
             const token = localStorage.getItem('token');
             const userId = localStorage.getItem('userId');
             
-            // Determine which event to use: from URL parameter or user's current event
-            const targetEventId = eventIdFromUrl || null;
+            if (!token || !userId) {
+                setError('Необходима авторизация');
+                return;
+            }
+            
+            // Fetch user role
+            try {
+                const userResponse = await fetch(`/api/participants/${userId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    setUserRole(userData.role || null);
+                }
+            } catch (err) {
+                console.error('Error fetching user role:', err);
+            }
+            
+            // Determine which event to use: from URL parameter, or fetch active event
+            let targetEventId = eventIdFromUrl;
+            
+            // If no eventId in URL, fetch active event
+            if (!targetEventId) {
+                try {
+                    // Сначала пытаемся получить отображаемое мероприятие
+                    const displayedResponse = await fetch('/api/events/displayed', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (displayedResponse.ok && displayedResponse.status !== 204) {
+                        const displayedEvent = await displayedResponse.json();
+                        if (displayedEvent && displayedEvent.id) {
+                            targetEventId = displayedEvent.id.toString();
+                        }
+                    } else {
+                        // Если нет отображаемого, получаем активные мероприятия
+                        const activeResponse = await fetch('/api/events/active', {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        
+                        if (activeResponse.ok) {
+                            const activeEvents = await activeResponse.json();
+                            // Берем первое активное мероприятие
+                            if (activeEvents && activeEvents.length > 0 && activeEvents[0].id) {
+                                targetEventId = activeEvents[0].id.toString();
+                            }
+                        }
+                    }
+                    
+                    // Проверяем участие пользователя в активном мероприятии
+                    if (targetEventId) {
+                        const isParticipantResponse = await fetch(`/api/events/${targetEventId}/is-participant`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        
+                        if (isParticipantResponse.ok) {
+                            const isParticipant = await isParticipantResponse.json();
+                            if (!isParticipant) {
+                                setError('Вы не являетесь участником активного мероприятия');
+                                return;
+                            }
+                        }
+                    } else {
+                        setError('Нет активных мероприятий');
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Error fetching active event:', err);
+                    setError('Ошибка при получении активного мероприятия');
+                    return;
+                }
+            }
             
             // If eventId is provided in URL, load event data FIRST to set trackActivityDuration immediately
             if (targetEventId) {
@@ -241,29 +321,26 @@ export const AddActivityForm: React.FC = () => {
                         );
                     }
                     
-                    // Always fetch activity types
+                    // Always fetch activity types for this specific event
                     promises.push(
                         fetch(`/api/activity-types?eventId=${eventIdToUse}`, {
                             headers: { 'Authorization': `Bearer ${token}` },
                         }).then(async (res) => {
                             if (res.ok) {
                                 const typesData = await res.json();
-                                setActivityTypes(typesData);
+                                // Filter activity types to only those belonging to this event
+                                const filteredTypes = typesData.filter((type: ActivityType) => 
+                                    !type.event || type.event.id === Number(eventIdToUse)
+                                );
+                                setActivityTypes(filteredTypes);
                             }
                         })
                     );
                     
                     await Promise.all(promises);
                 } else {
-                    // If no event, fetch all activity types (fallback)
-                    const typesResponse = await fetch('/api/activity-types', {
-                        headers: { 'Authorization': `Bearer ${token}` },
-                    });
-                    
-                    if (typesResponse.ok) {
-                        const typesData = await typesResponse.json();
-                        setActivityTypes(typesData);
-                    }
+                    // If no event found, show error
+                    setError('Не удалось определить активное мероприятие');
                 }
             }
         } catch (err) {
@@ -466,13 +543,44 @@ export const AddActivityForm: React.FC = () => {
             if (response.ok) {
                 navigate(-1);
             } else {
-                const errorText = isEditMode 
-                    ? 'Ошибка обновления активности'
-                    : 'Ошибка добавления активности';
-                setError(errorText);
+                // Try to extract error message from response
+                try {
+                    const errorData = await response.json();
+                    if (errorData.message) {
+                        setError(errorData.message);
+                    } else {
+                        const errorText = isEditMode 
+                            ? 'Ошибка обновления активности'
+                            : 'Ошибка добавления активности';
+                        setError(errorText);
+                    }
+                } catch (parseError) {
+                    // If response is not JSON, try to get text
+                    try {
+                        const errorText = await response.text();
+                        if (errorText) {
+                            setError(errorText);
+                        } else {
+                            const errorText = isEditMode 
+                                ? 'Ошибка обновления активности'
+                                : 'Ошибка добавления активности';
+                            setError(errorText);
+                        }
+                    } catch (textError) {
+                        const errorText = isEditMode 
+                            ? 'Ошибка обновления активности'
+                            : 'Ошибка добавления активности';
+                        setError(errorText);
+                    }
+                }
             }
-        } catch (err) {
-            setError('Ошибка подключения к серверу');
+        } catch (err: any) {
+            // Handle network errors or other exceptions
+            if (err.message) {
+                setError(err.message);
+            } else {
+                setError('Ошибка подключения к серверу');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -571,15 +679,28 @@ export const AddActivityForm: React.FC = () => {
                         <div className="mb-6">
                             <label className="block text-sm font-semibold text-slate-700 mb-2">
                                 Энергия (баллы) <span className="text-red-500">*</span>
+                                {userRole !== 'ADMIN' && (
+                                    <span className="text-xs text-slate-500 ml-2">(автоматически из типа активности)</span>
+                                )}
                             </label>
                             <input
                                 type="number"
                                 value={energy}
-                                onChange={(e) => setEnergy(e.target.value)}
-                                placeholder="Введите количество баллов"
+                                onChange={(e) => {
+                                    if (userRole === 'ADMIN') {
+                                        setEnergy(e.target.value);
+                                    }
+                                }}
+                                placeholder={userRole === 'ADMIN' ? "Введите количество баллов" : "Выберите тип активности"}
                                 min="0"
                                 required
-                                className="w-full px-5 py-4 rounded-xl bg-white border-2 border-slate-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 shadow-sm hover:border-slate-300"
+                                disabled={userRole !== 'ADMIN'}
+                                readOnly={userRole !== 'ADMIN'}
+                                className={`w-full px-5 py-4 rounded-xl border-2 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 shadow-sm ${
+                                    userRole === 'ADMIN'
+                                        ? 'bg-white border-slate-200 focus:border-blue-400 hover:border-slate-300'
+                                        : 'bg-slate-50 border-slate-200 text-slate-600 cursor-not-allowed'
+                                }`}
                             />
                             {energy && (
                                 <p className="text-xs text-slate-500 mt-1">
@@ -592,6 +713,11 @@ export const AddActivityForm: React.FC = () => {
                                         }
                                         return `Баллы за эту активность: ${points}`;
                                     })()}
+                                </p>
+                            )}
+                            {!energy && userRole !== 'ADMIN' && (
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Выберите тип активности, чтобы автоматически установить значение энергии
                                 </p>
                             )}
                         </div>
@@ -624,9 +750,11 @@ export const AddActivityForm: React.FC = () => {
                                         return `${currentYear}-01-01`;
                                     }
                                     // Если блокировка включена, ограничиваем выбор
+                                    // Для "текущая дата + 1 день": можно выбрать сегодня и вчера (minDate = вчера)
+                                    // Для "текущая дата + 2 дня": можно выбрать сегодня, вчера и позавчера (minDate = позавчера)
                                     const today = new Date();
                                     const minDate = new Date(today);
-                                    minDate.setDate(today.getDate() - (activityBlockingDays - 1));
+                                    minDate.setDate(today.getDate() - activityBlockingDays);
                                     return minDate.toISOString().split('T')[0];
                                 })()}
                                 label="Отчетная дата"

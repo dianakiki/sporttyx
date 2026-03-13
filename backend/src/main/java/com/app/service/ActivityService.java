@@ -406,8 +406,14 @@ public class ActivityService {
                 Integer blockingDays = event.getActivityBlockingDays();
                 
                 if (blockingDays != null && blockingDays > 0) {
-                    LocalDate blockingThreshold = currentDate.minusDays(blockingDays);
-                    if (activityDate.isBefore(blockingThreshold) || activityDate.isEqual(blockingThreshold)) {
+                    // Блокировка: активность блокируется, если (currentDate - reportDate) > blockingDays
+                    // Например, если blockingDays = 1 и currentDate = 13 марта:
+                    //   - reportDate = 13 марта: (13 - 13) = 0 > 1 → false → НЕ заблокирована
+                    //   - reportDate = 12 марта: (13 - 12) = 1 > 1 → false → НЕ заблокирована
+                    //   - reportDate = 11 марта: (13 - 11) = 2 > 1 → true → заблокирована
+                    long daysDifference = java.time.temporal.ChronoUnit.DAYS.between(activityDate, currentDate);
+                    
+                    if (daysDifference > blockingDays) {
                         throw new RuntimeException("Активность заблокирована для редактирования. Срок редактирования истек.");
                     }
                 }
@@ -576,10 +582,10 @@ public class ActivityService {
         Integer max = activityType.getMaxDurationMinutes();
 
         if (min != null && durationMinutes < min) {
-            throw new RuntimeException("Время активности меньше минимально допустимого для данного типа (минимальное время равно " + min + " мин).");
+            throw new RuntimeException("Указанное время тренировки меньше минимально допустимого");
         }
         if (max != null && durationMinutes > max) {
-            throw new RuntimeException("Время активности больше максимально допустимого для данного типа (максимальное время равно " + max + " мин).");
+            throw new RuntimeException("Указанное время тренировки больше максимального допустимого");
         }
     }
     
@@ -702,25 +708,32 @@ public class ActivityService {
             Integer blockingDays = event.getActivityBlockingDays();
             
             if (blockingDays != null && blockingDays > 0) {
-                // Calculate blocking threshold date (current date - blocking days)
-                LocalDate blockingThreshold = currentDate.minusDays(blockingDays);
+                // Блокировка: активность блокируется, если (currentDate - reportDate) > blockingDays
+                // Например, если blockingDays = 1 и currentDate = 13 марта:
+                //   - reportDate = 13 марта: (13 - 13) = 0 > 1 → false → НЕ заблокирована
+                //   - reportDate = 12 марта: (13 - 12) = 1 > 1 → false → НЕ заблокирована
+                //   - reportDate = 11 марта: (13 - 11) = 2 > 1 → true → заблокирована
+                long daysDifference = java.time.temporal.ChronoUnit.DAYS.between(activityDate, currentDate);
                 
                 // Check if activity is already blocked
-                if (activityDate.isBefore(blockingThreshold) || activityDate.isEqual(blockingThreshold)) {
+                if (daysDifference > blockingDays) {
                     isBlockedForEditing = true;
                 } else {
                     // Calculate seconds until blocking
-                    // Blocking happens at 00:00 of the day when activityDate becomes <= blockingThreshold
-                    // So if activityDate is today, blocking happens tomorrow at 00:00
-                    // If activityDate is yesterday, blocking happens today at 00:00
-                    LocalDate blockingDate = activityDate.plusDays(blockingDays);
+                    // Блокировка произойдет в 00:00 следующего дня, когда daysDifference станет > blockingDays
+                    // То есть когда currentDate станет на (blockingDays + 1) дней больше reportDate
+                    LocalDate blockingDate = activityDate.plusDays(blockingDays + 1);
                     LocalDateTime blockingDateTime = blockingDate.atStartOfDay();
                     LocalDateTime now = LocalDateTime.now();
                     
                     if (blockingDateTime.isAfter(now)) {
                         secondsUntilBlocking = java.time.Duration.between(now, blockingDateTime).getSeconds();
                     } else {
-                        isBlockedForEditing = true;
+                        // Если время блокировки уже прошло, проверяем еще раз
+                        long newDaysDifference = java.time.temporal.ChronoUnit.DAYS.between(activityDate, LocalDate.now());
+                        if (newDaysDifference > blockingDays) {
+                            isBlockedForEditing = true;
+                        }
                     }
                 }
             }

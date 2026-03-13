@@ -25,7 +25,7 @@ public interface ActivityRepository extends JpaRepository<Activity, Long>, JpaSp
     
     long countByModeratedByIdAndStatus(Long moderatorId, ActivityStatus status);
     
-    @Query("SELECT SUM(a.energy) FROM Activity a WHERE a.team.id = :teamId AND a.status IN :statuses")
+    @Query("SELECT COALESCE(SUM(a.points), 0) FROM Activity a WHERE a.team.id = :teamId AND a.status IN :statuses")
     Integer sumEnergyByTeamIdAndStatusIn(@Param("teamId") Long teamId, @Param("statuses") List<ActivityStatus> statuses);
     
     @Query("SELECT DISTINCT a FROM Activity a LEFT JOIN FETCH a.adjustments adj LEFT JOIN FETCH adj.bonusType WHERE a.id = :id")

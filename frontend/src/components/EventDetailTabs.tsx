@@ -399,6 +399,8 @@ export const EventDetailTabs: React.FC = () => {
         switch (status) {
             case 'DRAFT':
                 return { label: 'Черновик', icon: '📝', color: 'bg-slate-100 text-slate-700 border-slate-300' };
+            case 'SOON':
+                return { label: 'Скоро', icon: '⏰', color: 'bg-orange-100 text-orange-700 border-orange-300' };
             case 'ACTIVE':
                 return { label: 'Активное', icon: '✅', color: 'bg-green-100 text-green-700 border-green-300' };
             case 'COMPLETED':
@@ -864,7 +866,7 @@ export const EventDetailTabs: React.FC = () => {
                                 <div>
                                     <label className="block text-sm font-semibold text-slate-700 mb-2">Статус мероприятия</label>
                                     <div className="grid grid-cols-2 gap-3">
-                                        {['DRAFT', 'ACTIVE', 'COMPLETED', 'ARCHIVED'].map((status) => {
+                                        {['DRAFT', 'SOON', 'ACTIVE', 'COMPLETED', 'ARCHIVED'].map((status) => {
                                             const statusInfo = getStatusInfo(status);
                                             const isSelected = (editForm.status || 'DRAFT') === status;
                                             return (
@@ -1127,6 +1129,7 @@ export const EventDetailTabs: React.FC = () => {
                                     <div className="text-sm font-semibold text-slate-700 mb-1">Статус</div>
                                     <div className="text-lg text-slate-900">
                                         {event.status === 'DRAFT' && '📝 Черновик'}
+                                        {event.status === 'SOON' && '⏰ Скоро'}
                                         {event.status === 'ACTIVE' && '✅ Активное'}
                                         {event.status === 'COMPLETED' && '🏁 Завершено'}
                                         {event.status === 'ARCHIVED' && '📦 Архивировано'}

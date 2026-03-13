@@ -3,8 +3,10 @@
 export const translateStatus = (status: string): string => {
     const translations: { [key: string]: string } = {
         'DRAFT': 'Черновик',
+        'SOON': 'Скоро',
         'ACTIVE': 'Активно',
         'COMPLETED': 'Завершено',
+        'ARCHIVED': 'Архивировано',
         'CANCELLED': 'Отменено',
         'PENDING': 'Ожидание',
         'APPROVED': 'Одобрено',

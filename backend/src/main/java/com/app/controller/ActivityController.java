@@ -137,6 +137,7 @@ public class ActivityController {
                 return ResponseEntity.badRequest().build();
             }
         }
+        // Let GlobalExceptionHandler handle RuntimeException and return error message
         CreateActivityResponse response = activityService.createActivity(
                 teamId, participantId, type, energy, description, durationMinutes, reportDateParsed, photos, participantIds);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -169,21 +170,18 @@ public class ActivityController {
             @RequestParam(required = false) String reportDate,
             @RequestParam(required = false) List<MultipartFile> photos,
             @RequestParam(required = false) List<Long> participantIds) {
-        try {
-            LocalDate reportDateParsed = null;
-            if (reportDate != null && !reportDate.isEmpty()) {
-                try {
-                    reportDateParsed = LocalDate.parse(reportDate);
-                } catch (Exception e) {
-                    return ResponseEntity.badRequest().build();
-                }
+        LocalDate reportDateParsed = null;
+        if (reportDate != null && !reportDate.isEmpty()) {
+            try {
+                reportDateParsed = LocalDate.parse(reportDate);
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().build();
             }
-            CreateActivityResponse response = activityService.updateActivity(
-                    id, participantId, type, energy, description, durationMinutes, reportDateParsed, photos, participantIds);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
         }
+        // Let GlobalExceptionHandler handle RuntimeException and return error message
+        CreateActivityResponse response = activityService.updateActivity(
+                id, participantId, type, energy, description, durationMinutes, reportDateParsed, photos, participantIds);
+        return ResponseEntity.ok(response);
     }
     
     /**

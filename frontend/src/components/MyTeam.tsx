@@ -21,6 +21,8 @@ interface Activity {
     photoUrl?: string;
     photoUrls?: string[];
     status?: string;
+    isBlockedForEditing?: boolean;
+    secondsUntilBlocking?: number | null;
 }
 
 interface Team {
@@ -151,6 +153,13 @@ export const MyTeam: React.FC = () => {
                     const dateB = new Date(b.createdAt).getTime();
                     return dateB - dateA;
                 });
+                // Debug: log activity data to check blocking fields
+                console.log('Team activities loaded:', sortedActivities.map((a: Activity) => ({
+                    id: a.id,
+                    status: a.status,
+                    isBlockedForEditing: a.isBlockedForEditing,
+                    secondsUntilBlocking: a.secondsUntilBlocking
+                })));
                 setActivities(sortedActivities);
             }
 
@@ -334,7 +343,7 @@ export const MyTeam: React.FC = () => {
                                     key={activity.id}
                                     activity={activity}
                                     showSocialFeatures={false}
-                                    onEdit={activity.status === 'PENDING' ? ((activityId) => {
+                                    onEdit={activity.status === 'PENDING' && activity.isBlockedForEditing !== true ? ((activityId) => {
                                         const url = activeEventId 
                                             ? `/add-activity?eventId=${activeEventId}&edit=${activityId}`
                                             : `/add-activity?edit=${activityId}`;
