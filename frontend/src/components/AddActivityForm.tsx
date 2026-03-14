@@ -131,9 +131,11 @@ export const AddActivityForm: React.FC = () => {
     };
 
     useEffect(() => {
-        if (selectedTeamId) {
+        // Only fetch if participants are not already loaded
+        // This prevents duplicate fetching when we set selectedTeamId and participants together
+        if (selectedTeamId && participants.length === 0) {
             fetchTeamParticipants(selectedTeamId);
-        } else {
+        } else if (!selectedTeamId) {
             setParticipants([]);
             setSelectedParticipantIds([]);
         }
@@ -231,116 +233,138 @@ export const AddActivityForm: React.FC = () => {
                 }
             }
             
-            // If eventId is provided in URL, load event data FIRST to set trackActivityDuration immediately
-            if (targetEventId) {
-                try {
-                    const eventResponse = await fetch(`/api/events/${targetEventId}`, {
-                        headers: { 'Authorization': `Bearer ${token}` },
-                    });
-                    
-                    if (eventResponse.ok) {
-                        const eventData = await eventResponse.json();
-                        setIsTeamBased(eventData.teamBasedCompetition === true);
-                        setTrackActivityDuration(eventData.trackActivityDuration || false);
-                        setArtifactsRequired(eventData.artifactsRequired || false);
-                        setActivityBlockingEnabled(eventData.activityBlockingEnabled || false);
-                        setActivityBlockingDays(eventData.activityBlockingDays || null);
-                    }
-                } catch (err) {
-                    console.error('Error fetching event data:', err);
-                }
+            // Use targetEventId as eventIdToUse
+            const eventIdToUse = targetEventId;
+            
+            if (!eventIdToUse) {
+                setError('Не удалось определить активное мероприятие');
+                return;
             }
             
-            // Fetch user's team and event
-            const userResponse = await fetch(`/api/participants/${userId}`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
+            // Fetch all data in parallel for faster loading
+            const promises: Promise<any>[] = [];
             
-            if (userResponse.ok) {
-                const userData = await userResponse.json();
+            // 1. Fetch user data (for role and team info)
+            promises.push(
+                fetch(`/api/participants/${userId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                }).then(async (res) => {
+                    if (res.ok) {
+                        return await res.json();
+                    }
+                    return null;
+                })
+            );
+            
+            // 2. Fetch event data
+            promises.push(
+                fetch(`/api/events/${eventIdToUse}`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                }).then(async (res) => {
+                    if (res.ok) {
+                        return await res.json();
+                    }
+                    return null;
+                })
+            );
+            
+            // 3. Fetch activity types
+            promises.push(
+                fetch(`/api/activity-types?eventId=${eventIdToUse}`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                }).then(async (res) => {
+                    if (res.ok) {
+                        return await res.json();
+                    }
+                    return null;
+                })
+            );
+            
+            // 4. Fetch teams for this event (to find user's team)
+            promises.push(
+                fetch(`/api/teams?eventId=${eventIdToUse}`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                }).then(async (res) => {
+                    if (res.ok) {
+                        return await res.json();
+                    }
+                    return null;
+                })
+            );
+            
+            // Wait for all initial data
+            const [userData, eventData, activityTypesData, teamsData] = await Promise.all(promises);
+            
+            // Set event-related data immediately
+            if (eventData) {
+                setIsTeamBased(eventData.teamBasedCompetition === true);
+                setTrackActivityDuration(eventData.trackActivityDuration || false);
+                setArtifactsRequired(eventData.artifactsRequired || false);
+                setActivityBlockingEnabled(eventData.activityBlockingEnabled || false);
+                setActivityBlockingDays(eventData.activityBlockingDays || null);
+            }
+            
+            // Set activity types
+            if (activityTypesData) {
+                const filteredTypes = activityTypesData.filter((type: ActivityType) => 
+                    !type.event || type.event.id === Number(eventIdToUse)
+                );
+                setActivityTypes(filteredTypes);
+            }
+            
+            // Find user's team and load participants in parallel
+            if (userData && teamsData && Array.isArray(teamsData)) {
+                // Find team where user is a member - do this in parallel for all teams
+                const teamParticipantsPromises = teamsData.map((team: any) =>
+                    fetch(`/api/teams/${team.id}/participants`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    }).then(async (res) => {
+                        if (res.ok) {
+                            const participants = await res.json();
+                            const userInTeam = participants.some((p: any) => p.id.toString() === userId);
+                            return userInTeam ? { team, participants } : null;
+                        }
+                        return null;
+                    }).catch(() => null)
+                );
                 
-                // If eventId is provided in URL, use it; otherwise use user's eventId
-                const eventIdToUse = targetEventId || userData.eventId;
+                const teamParticipantsResults = await Promise.all(teamParticipantsPromises);
+                const userTeamData = teamParticipantsResults.find(result => result !== null);
                 
-                // Set team ID - if eventId is provided, try to find team for that event
-                // Otherwise use user's current team
-                if (targetEventId) {
-                    // Try to find user's team for this specific event
-                    // First, get all teams for this event
+                if (userTeamData) {
+                    setSelectedTeamId(userTeamData.team.id.toString());
+                    // Immediately set participants without waiting for useEffect
+                    setParticipants(userTeamData.participants);
+                } else if (userData.teamId) {
+                    // Fallback to user's current team
+                    setSelectedTeamId(userData.teamId.toString());
+                    // Load participants for this team
                     try {
-                        const teamsResponse = await fetch(`/api/teams?eventId=${targetEventId}`, {
+                        const participantsResponse = await fetch(`/api/teams/${userData.teamId}/participants`, {
                             headers: { 'Authorization': `Bearer ${token}` },
                         });
-                        if (teamsResponse.ok) {
-                            const allTeams = await teamsResponse.json();
-                            // Find team where user is a member
-                            for (const team of allTeams) {
-                                const participantsResponse = await fetch(`/api/teams/${team.id}/participants`, {
-                                    headers: { 'Authorization': `Bearer ${token}` },
-                                });
-                                if (participantsResponse.ok) {
-                                    const teamParticipants = await participantsResponse.json();
-                                    const userInTeam = teamParticipants.some((p: any) => p.id.toString() === userId);
-                                    if (userInTeam) {
-                                        setSelectedTeamId(team.id.toString());
-                                        break;
-                                    }
-                                }
-                            }
+                        if (participantsResponse.ok) {
+                            const teamParticipants = await participantsResponse.json();
+                            setParticipants(teamParticipants);
                         }
                     } catch (err) {
-                        console.error('Error fetching teams for event:', err);
-                        // Fallback to user's current team if available
-                        if (userData.teamId) {
-                            setSelectedTeamId(userData.teamId.toString());
-                        }
+                        console.error('Error fetching team participants:', err);
                     }
-                } else if (userData.teamId) {
-                    setSelectedTeamId(userData.teamId.toString());
                 }
-                
-                // Fetch event info (if not already loaded) and activity types in parallel
-                if (eventIdToUse) {
-                    const promises: Promise<any>[] = [];
-                    
-                    // Only fetch event if we haven't already loaded it
-                    if (!targetEventId) {
-                        promises.push(
-                            fetch(`/api/events/${eventIdToUse}`, {
-                                headers: { 'Authorization': `Bearer ${token}` },
-                            }).then(async (res) => {
-                                if (res.ok) {
-                                    const eventData = await res.json();
-                                    setIsTeamBased(eventData.teamBasedCompetition === true);
-                                    setTrackActivityDuration(eventData.trackActivityDuration || false);
-                                    setArtifactsRequired(eventData.artifactsRequired || false);
-                                    setActivityBlockingEnabled(eventData.activityBlockingEnabled || false);
-                                    setActivityBlockingDays(eventData.activityBlockingDays || null);
-                                }
-                            })
-                        );
+            } else if (userData && userData.teamId) {
+                // Fallback: use user's current team
+                setSelectedTeamId(userData.teamId.toString());
+                // Load participants for this team
+                try {
+                    const participantsResponse = await fetch(`/api/teams/${userData.teamId}/participants`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    });
+                    if (participantsResponse.ok) {
+                        const teamParticipants = await participantsResponse.json();
+                        setParticipants(teamParticipants);
                     }
-                    
-                    // Always fetch activity types for this specific event
-                    promises.push(
-                        fetch(`/api/activity-types?eventId=${eventIdToUse}`, {
-                            headers: { 'Authorization': `Bearer ${token}` },
-                        }).then(async (res) => {
-                            if (res.ok) {
-                                const typesData = await res.json();
-                                // Filter activity types to only those belonging to this event
-                                const filteredTypes = typesData.filter((type: ActivityType) => 
-                                    !type.event || type.event.id === Number(eventIdToUse)
-                                );
-                                setActivityTypes(filteredTypes);
-                            }
-                        })
-                    );
-                    
-                    await Promise.all(promises);
-                } else {
-                    // If no event found, show error
-                    setError('Не удалось определить активное мероприятие');
+                } catch (err) {
+                    console.error('Error fetching team participants:', err);
                 }
             }
         } catch (err) {
@@ -702,18 +726,29 @@ export const AddActivityForm: React.FC = () => {
                                         : 'bg-slate-50 border-slate-200 text-slate-600 cursor-not-allowed'
                                 }`}
                             />
-                            {energy && (
-                                <p className="text-xs text-slate-500 mt-1">
-                                    {(() => {
-                                        const energyNum = Number(energy) || 0;
-                                        const durationNum = Number(durationMinutes) || 0;
-                                        let points = energyNum;
-                                        if (trackActivityDuration && durationNum > 0) {
-                                            points = Math.floor((energyNum * durationNum) / 60);
-                                        }
-                                        return `Баллы за эту активность: ${points}`;
-                                    })()}
-                                </p>
+                            {trackActivityDuration && energy && (
+                                <div className="mt-2 p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                                    <p className="text-sm font-semibold text-blue-900">
+                                        Итоговый балл: {(() => {
+                                            const energyNum = Number(energy) || 0;
+                                            const durationNum = Number(durationMinutes) || 0;
+                                            let points = energyNum;
+                                            if (durationNum > 0) {
+                                                points = Math.floor((energyNum * durationNum) / 60);
+                                            }
+                                            return points;
+                                        })()}
+                                    </p>
+                                    {durationMinutes && Number(durationMinutes) > 0 ? (
+                                        <p className="text-xs text-blue-700 mt-1">
+                                            Расчет: {energy} × {durationMinutes} / 60 = {Math.floor((Number(energy) || 0) * Number(durationMinutes) / 60)}
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-blue-600 mt-1">
+                                            Введите время активности для расчета итогового балла
+                                        </p>
+                                    )}
+                                </div>
                             )}
                             {!energy && userRole !== 'ADMIN' && (
                                 <p className="text-xs text-slate-500 mt-1">
